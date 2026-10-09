@@ -42,20 +42,22 @@ function Quote-Arg([string]$s) {
 }
 
 function Load-Config {
-    $cfg = @{ workspace = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tasaciones'); auto = $true; carpetas = @() }
+    $cfg = @{ workspace = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tasaciones'); auto = $true; carpetas = @(); fcEntorno = 'PRE'; fcClaves = @{} }
     if (Test-Path $ConfigFile) {
         try {
             $j = Get-Content $ConfigFile -Raw -Encoding UTF8 | ConvertFrom-Json
             if ($j.workspace) { $cfg.workspace = $j.workspace }
             if ($null -ne $j.auto) { $cfg.auto = [bool]$j.auto }
             if ($j.carpetas) { $cfg.carpetas = @($j.carpetas) }
+            if ($j.fcEntorno) { $cfg.fcEntorno = $j.fcEntorno }
+            if ($j.fcClaves) { foreach ($pr in $j.fcClaves.PSObject.Properties) { $cfg.fcClaves[$pr.Name] = $pr.Value } }
         } catch {}
     }
     return $cfg
 }
 
 function Save-Config {
-    @{ workspace = $script:workspace; auto = [bool]$ui.ChkAuto.IsChecked; carpetas = @($script:carpetas) } |
+    @{ workspace = $script:workspace; auto = [bool]$ui.ChkAuto.IsChecked; carpetas = @($script:carpetas); fcEntorno = $script:fcEntorno; fcClaves = $script:fcClaves } |
         ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
 }
 
@@ -66,6 +68,9 @@ New-Item -ItemType Directory -Force $script:workspace | Out-Null
 $script:carpetas = New-Object System.Collections.ArrayList
 foreach ($c in $cfg.carpetas) { if (Test-Path $c) { [void]$script:carpetas.Add($c) } }
 $script:archivos = New-Object System.Collections.ArrayList
+$script:fcEntorno = $cfg.fcEntorno
+$script:fcClaves = $cfg.fcClaves      # entorno -> clave cifrada con DPAPI (solo la descifra este usuario de Windows)
+$script:fichaPendiente = $null        # ficha que abrirá la próxima conversación
 
 $script:proc = $null
 $script:outTask = $null
@@ -218,6 +223,18 @@ $script:pensando = $true
           <TextBlock x:Name="TxtVersion" Foreground="#5A5A5A" FontSize="11" Margin="12,4,8,0"/>
         </StackPanel>
         <DockPanel Margin="0,4,0,8">
+          <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="FOTICOS COLLECTION" Style="{StaticResource Seccion}"/>
+            <Button x:Name="BtnFichas" Style="{StaticResource Plano}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8A1;" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Text="Fichas por tasar"/>
+                <Border x:Name="InsigniaEntorno" CornerRadius="6" Padding="6,1" Margin="10,0,0,0" Background="#8A5A12" VerticalAlignment="Center">
+                  <TextBlock x:Name="TxtInsigniaEntorno" Text="PRE" FontSize="10.5" FontWeight="Bold" Foreground="White"/>
+                </Border>
+              </StackPanel>
+            </Button>
+          </StackPanel>
           <TextBlock DockPanel.Dock="Top" Text="CONVERSACIONES" Style="{StaticResource Seccion}"/>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="ListaConv"/>
@@ -271,8 +288,30 @@ $script:pensando = $true
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <Border CornerRadius="22" Background="#2F2F2F" Padding="10,8,10,8">
+        <Border x:Name="BarraFicha" CornerRadius="14" Background="#1E2A24" BorderBrush="#2E7D5A" BorderThickness="1"
+                Padding="12,8" Margin="0,0,0,8" Visibility="Collapsed">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <Border x:Name="BarraEntorno" CornerRadius="6" Padding="6,1" Background="#8A5A12" VerticalAlignment="Center" Margin="0,0,10,0">
+                <TextBlock x:Name="TxtBarraEntorno" Text="PRE" FontSize="10.5" FontWeight="Bold" Foreground="White"/>
+              </Border>
+              <TextBlock x:Name="TxtBarraFicha" Foreground="#ECECEC" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+              <TextBlock x:Name="TxtBarraEstado" Foreground="#8E8E8E" FontSize="12.5" VerticalAlignment="Center" Margin="12,0,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+              <Button x:Name="BtnAbrirFicha" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="10,5" FontSize="12.5" Content="Abrir en Foticos Collection"/>
+              <Button x:Name="BtnRevisarEnviar" Style="{StaticResource Plano}" Background="#2E7D5A" Foreground="White" Padding="14,6"
+                      FontWeight="SemiBold" Margin="6,0,0,0" Content="Revisar y enviar tasación" IsEnabled="False"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+        <Border Grid.Row="1" CornerRadius="22" Background="#2F2F2F" Padding="10,8,10,8">
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto"/>
@@ -301,9 +340,115 @@ $script:pensando = $true
             </Grid>
           </Grid>
         </Border>
-        <TextBlock Grid.Row="1" Text="Enter envía · Shift+Enter nueva línea · Valora puede equivocarse: revisa lo importante."
+        <TextBlock Grid.Row="2" Text="Enter envía · Shift+Enter nueva línea · Valora puede equivocarse: revisa lo importante."
                    Foreground="#6E6E6E" FontSize="11.5" HorizontalAlignment="Center" Margin="0,8,0,0"/>
       </Grid>
+    </Grid>
+
+    <!-- Fichas por tasar de Foticos Collection -->
+    <Grid x:Name="PanelFC" Grid.ColumnSpan="2" Background="#CC121212" Visibility="Collapsed" Panel.ZIndex="20">
+      <Border Width="760" MaxHeight="680" Background="#262626" CornerRadius="18" Padding="24,20" BorderBrush="#3A3A3A" BorderThickness="1"
+              VerticalAlignment="Center" HorizontalAlignment="Center">
+        <DockPanel>
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,14">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Fichas por tasar" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Border x:Name="PanelEntorno" CornerRadius="6" Padding="8,2" Margin="12,0,0,0" Background="#8A5A12" VerticalAlignment="Center">
+                <TextBlock x:Name="TxtPanelEntorno" Text="PRE" FontSize="12" FontWeight="Bold" Foreground="White"/>
+              </Border>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+              <Button x:Name="BtnConexionFC" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Conexión"/>
+              <Button x:Name="BtnCerrarFC" Style="{StaticResource Plano}" Padding="8">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE711;" FontSize="12"/>
+              </Button>
+            </StackPanel>
+          </Grid>
+
+          <Border x:Name="ConexionFC" DockPanel.Dock="Top" Background="#1E1E1E" CornerRadius="12" Padding="14,12" Margin="0,0,0,14" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock Text="Conexión con Foticos Collection" FontWeight="SemiBold" Margin="0,0,0,8"/>
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <RadioButton x:Name="RadPRE" Content="PRE (stg.foticoscollection.com)" Foreground="#ECECEC" Margin="0,0,18,0" GroupName="Entorno"/>
+                <RadioButton x:Name="RadPRO" Content="PRO (foticoscollection.com)" Foreground="#ECECEC" GroupName="Entorno"/>
+              </StackPanel>
+              <TextBlock Text="Clave de Valora (te la da el administrador; se guarda cifrada para tu usuario de Windows):" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
+                  <PasswordBox x:Name="ClaveFC" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+                </Border>
+                <Button x:Name="BtnGuardarConexion" Grid.Column="1" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717"
+                        Padding="14,7" Margin="8,0,0,0" FontWeight="SemiBold" Content="Guardar y probar"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Border Background="#1A1A1A" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,2">
+              <TextBox x:Name="BuscarFC" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,7"
+                       ToolTip="Nombre, modelo, nº de serie o número de ficha"/>
+            </Border>
+            <ComboBox x:Name="EstadoFC" Grid.Column="1" Margin="8,0,0,0" MinWidth="150" VerticalContentAlignment="Center">
+              <ComboBoxItem Content="Todos los estados" IsSelected="True"/>
+              <ComboBoxItem Content="INGRESO"/>
+              <ComboBoxItem Content="PREINGRESO"/>
+              <ComboBoxItem Content="PRESUPUESTO"/>
+            </ComboBox>
+            <Button x:Name="BtnBuscarFC" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="14,7"
+                    Margin="8,0,0,0" FontWeight="SemiBold" Content="Buscar"/>
+          </Grid>
+
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+            <Button x:Name="BtnMasFC" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Cargar más" Visibility="Collapsed"/>
+            <TextBlock x:Name="EstadoPanelFC" Foreground="#8E8E8E" FontSize="12.5" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <ScrollViewer x:Name="ScrollFC" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="ListaFC"/>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <!-- Confirmación de envío de la tasación -->
+    <Grid x:Name="PanelConfirmar" Grid.ColumnSpan="2" Background="#D9121212" Visibility="Collapsed" Panel.ZIndex="30">
+      <Border Width="820" MaxHeight="700" Background="#262626" CornerRadius="18" Padding="26,22" BorderBrush="#3A3A3A" BorderThickness="1"
+              VerticalAlignment="Center" HorizontalAlignment="Center">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Enviar tasación a Foticos Collection" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Border x:Name="ConfEntorno" CornerRadius="6" Padding="8,2" Margin="12,0,0,0" Background="#8A5A12" VerticalAlignment="Center">
+                <TextBlock x:Name="TxtConfEntorno" Text="PRE" FontSize="12" FontWeight="Bold" Foreground="White"/>
+              </Border>
+            </StackPanel>
+            <TextBlock x:Name="TxtConfPieza" FontSize="15" Margin="0,8,0,0" TextWrapping="Wrap"/>
+            <TextBlock x:Name="TxtConfAviso" Foreground="#E8A33D" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <StackPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+            <TextBlock x:Name="TxtConfEstado" Foreground="#8E8E8E" FontSize="13" Margin="0,0,0,10" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+              <Button x:Name="BtnConfCancelar" Style="{StaticResource Plano}" Foreground="#ECECEC" Padding="16,9" Content="Cancelar"/>
+              <Button x:Name="BtnConfEnviar" Style="{StaticResource Plano}" Background="#2E7D5A" Foreground="White" Padding="18,9"
+                      Margin="10,0,0,0" FontWeight="SemiBold" Content="Sí, enviar tasación"/>
+            </StackPanel>
+          </StackPanel>
+
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Grid x:Name="TablaCambios"/>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
     </Grid>
 
     <!-- Inicio de sesión con Google -->
@@ -350,7 +495,12 @@ $ui = @{}
 foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpeta','ChkAuto','BtnTerminal','TxtEstado',
                'Scroll','Chat','Inicio','Sugerencias','Adjuntos','BtnAdjuntar','Prompt','Placeholder','BtnEnviar','IcoEnviar',
                'Login','LoginTexto','BtnLogin','LoginCodigo','CodigoLogin','BtnReabrir','BtnCodigo','LoginEstado','BtnLoginLuego',
-               'TxtCuenta','BtnLogout','ListaConv','AvisoVersion','BtnReiniciar','TxtVersion') {
+               'TxtCuenta','BtnLogout','ListaConv','AvisoVersion','BtnReiniciar','TxtVersion',
+               'BtnFichas','InsigniaEntorno','TxtInsigniaEntorno','BarraFicha','BarraEntorno','TxtBarraEntorno','TxtBarraFicha',
+               'TxtBarraEstado','BtnAbrirFicha','BtnRevisarEnviar','PanelFC','PanelEntorno','TxtPanelEntorno','BtnConexionFC',
+               'BtnCerrarFC','ConexionFC','RadPRE','RadPRO','ClaveFC','BtnGuardarConexion','BuscarFC','EstadoFC','BtnBuscarFC',
+               'BtnMasFC','EstadoPanelFC','ListaFC','PanelConfirmar','ConfEntorno','TxtConfEntorno','TxtConfPieza','TxtConfAviso',
+               'TxtConfEstado','BtnConfCancelar','BtnConfEnviar','TablaCambios') {
     $ui[$n] = $win.FindName($n)
 }
 $icono = Join-Path $ConfigDir 'valora.ico'
@@ -423,6 +573,17 @@ function Add-MensajeAgy {
     $script:pensando = $true
 }
 
+# En las conversaciones de una ficha, el bloque ```json de la tasación es para la
+# máquina: en pantalla se sustituye por un aviso (se guarda y se envía completo).
+function Format-TextoVisible([string]$texto) {
+    if (-not $script:conv -or -not $script:conv.ficha) { return $texto }
+    return [regex]::Replace($texto, '```(?:json)?\s*\{[\s\S]*?\}\s*```', {
+        param($m)
+        $n = ([regex]::Matches($m.Value, '"\w+"\s*:')).Count
+        "[ Tasación preparada ($n campos). Revísala y envíala con el botón «Revisar y enviar tasación» de abajo. ]"
+    })
+}
+
 function Add-MensajeAgyTexto([string]$texto) {
     Add-MensajeAgy
     $script:respuesta.Text = $texto
@@ -483,6 +644,7 @@ function New-ConvVacia {
     $ui.Chat.Children.Clear()
     Update-Inicio
     Update-ListaConv
+    if (Get-Command Update-BarraFicha -ErrorAction SilentlyContinue) { Update-BarraFicha }
 }
 
 function Open-Conv([string]$id) {
@@ -495,10 +657,11 @@ function Open-Conv([string]$id) {
     $ui.Chat.Children.Clear()
     foreach ($m in $c.mensajes) {
         if ($m.rol -eq 'usuario') { Add-MensajeUsuario $m.texto @($m.adjuntos | Where-Object { $_ }) }
-        else { Add-MensajeAgyTexto $m.texto }
+        else { Add-MensajeAgyTexto (Format-TextoVisible $m.texto) }
     }
     Update-Inicio
     Update-ListaConv
+    Update-BarraFicha
     $ui.Scroll.ScrollToEnd()
     Set-Estado 'Conversación abierta. Puedes seguir donde la dejaste.'
     $ui.Prompt.Focus() | Out-Null
@@ -1027,18 +1190,20 @@ $timer.Add_Tick({
         }
         if ($script:pensando) { Write-Respuesta '(sin respuesta)' '#8E8E8E' }
         if ($script:respuesta) {
-            $script:respuesta.Text = $script:respuesta.Text.TrimEnd()
+            $completo = $script:respuesta.Text.TrimEnd()
+            $script:respuesta.Text = Format-TextoVisible $completo
             if ($script:conv -and -not $script:avisoLogin) {
-                $script:conv.mensajes = @($script:conv.mensajes) + @([pscustomobject]@{ rol = 'agy'; texto = $script:respuesta.Text; adjuntos = @() })
+                $script:conv.mensajes = @($script:conv.mensajes) + @([pscustomobject]@{ rol = 'agy'; texto = $completo; adjuntos = @() })
                 Save-Conv
                 Update-ListaConv
             }
+            Update-BarraFicha
         }
         $ui.Prompt.Focus() | Out-Null
     }
 })
 
-function Enviar {
+function Enviar([string]$instrucciones = '') {
     if ($script:proc) { return }
     if (-not $script:Agy) { $script:Agy = Find-Agy }
     if (-not $script:Agy) {
@@ -1068,6 +1233,7 @@ function Enviar {
     $carpetas = @($script:carpetas)
 
     $mensaje = $texto
+    if ($instrucciones) { $mensaje = $instrucciones + "`n`n" + $texto }
     if ($adjuntos.Count -gt 0) {
         $mensaje += "`n`nArchivos adjuntos (ábrelos y míralos):`n" + (($adjuntos | ForEach-Object { "- $_" }) -join "`n")
     }
@@ -1081,7 +1247,13 @@ function Enviar {
         $script:conv = [pscustomobject]@{
             id = [Guid]::NewGuid().ToString(); titulo = $titulo; agyId = $null
             creada = (Get-Date).ToString('o'); actualizada = (Get-Date).ToString('o'); mensajes = @()
+            ficha = $script:fichaPendiente; envios = @()
         }
+        if ($script:fichaPendiente) {
+            $script:conv.titulo = "Ficha #$($script:fichaPendiente.id) · $($script:fichaPendiente.nombre)"
+            if ($script:conv.titulo.Length -gt 70) { $script:conv.titulo = $script:conv.titulo.Substring(0, 70) + '…' }
+        }
+        $script:fichaPendiente = $null
     }
     $script:conv.mensajes = @($script:conv.mensajes) + @([pscustomobject]@{ rol = 'usuario'; texto = $texto; adjuntos = @($adjuntos) })
     Save-Conv
@@ -1202,6 +1374,435 @@ $ui.BtnTerminal.Add_Click({
     foreach ($c in $script:carpetas) { $extra += " --add-dir '" + ($c -replace "'", "''") + "'" }
     $comando = "& '" + ($script:Agy -replace "'", "''") + "'" + $extra
     Start-Process powershell.exe -WorkingDirectory $script:workspace -ArgumentList @('-NoExit', '-NoProfile', '-Command', $comando)
+})
+
+# ---------- Foticos Collection ----------
+# Valora habla con la API /api/valora de Foticos Collection: lista las fichas sin
+# tasar, abre una conversación para tasar una ficha con las reglas de la web y,
+# tras una confirmación explícita, envía la tasación (con la conversación).
+$FCUrls = @{ PRE = 'https://stg.foticoscollection.com'; PRO = 'https://foticoscollection.com' }
+$script:httpPend = New-Object System.Collections.ArrayList
+$script:fcPagina = 1
+$script:fcCargando = $false
+$script:tasacionDetectada = $null
+$script:simulacion = $null
+
+function Get-UrlFC([string]$entorno) {
+    if ($env:VALORA_FC_URL) { return $env:VALORA_FC_URL.TrimEnd('/') }   # pruebas contra un servidor local
+    return $FCUrls[$entorno]
+}
+
+function Get-ClaveFC([string]$entorno = $script:fcEntorno) {
+    $cifrada = $script:fcClaves[$entorno]
+    if (-not $cifrada) { return $null }
+    try {
+        $seguro = ConvertTo-SecureString $cifrada -ErrorAction Stop
+        $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($seguro)
+        try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
+    } catch { return $null }
+}
+
+function Set-ClaveFC([string]$clave, [string]$entorno = $script:fcEntorno) {
+    $script:fcClaves[$entorno] = (ConvertTo-SecureString $clave -AsPlainText -Force | ConvertFrom-SecureString)
+    Save-Config
+}
+
+function Set-Insignia($borde, $texto, [string]$entorno) {
+    $borde.Background = Brush $(if ($entorno -eq 'PRO') { '#B3261E' } else { '#8A5A12' })
+    $texto.Text = $entorno
+}
+
+function Update-Entorno {
+    Set-Insignia $ui.InsigniaEntorno $ui.TxtInsigniaEntorno $script:fcEntorno
+    Set-Insignia $ui.PanelEntorno $ui.TxtPanelEntorno $script:fcEntorno
+    $ui.RadPRE.IsChecked = ($script:fcEntorno -eq 'PRE')
+    $ui.RadPRO.IsChecked = ($script:fcEntorno -eq 'PRO')
+}
+
+# --- HTTP sin bloquear la ventana: cada petición es una tarea que revisa un temporizador.
+function Read-ErrorHttp($tarea) {
+    $ex = $tarea.Exception
+    if ($ex) { $ex = $ex.GetBaseException() }
+    $msg = if ($ex) { $ex.Message } else { 'petición cancelada' }
+    if ($ex -is [System.Net.WebException] -and $ex.Response) {
+        try {
+            $cuerpo = (New-Object System.IO.StreamReader($ex.Response.GetResponseStream(), [Text.Encoding]::UTF8)).ReadToEnd()
+            $j = $cuerpo | ConvertFrom-Json
+            if ($j.error) { $msg = $j.error } elseif ($j.message) { $msg = $j.message }
+        } catch {}
+    }
+    return $msg
+}
+
+$timerHttp = New-Object System.Windows.Threading.DispatcherTimer
+$timerHttp.Interval = [TimeSpan]::FromMilliseconds(120)
+$timerHttp.Add_Tick({
+    foreach ($p in @($script:httpPend)) {
+        if (-not $p.tarea.IsCompleted) { continue }
+        [void]$script:httpPend.Remove($p)
+        $res = $null; $err = $null
+        if ($p.tarea.IsFaulted -or $p.tarea.IsCanceled) { $err = Read-ErrorHttp $p.tarea }
+        elseif ($p.json) { try { $res = $p.tarea.Result | ConvertFrom-Json } catch { $err = 'Respuesta no válida del servidor.' } }
+        else { $res = $true }
+        try { & $p.alTerminar $res $err $p.ctx } catch { Set-Estado ('Error: ' + $_.Exception.Message) '#F28B82' }
+    }
+    if ($script:httpPend.Count -eq 0) { $timerHttp.Stop() }
+})
+
+function New-ClienteFC([string]$entorno) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072
+    $wc = New-Object System.Net.WebClient
+    $wc.Encoding = [System.Text.Encoding]::UTF8
+    $wc.Headers['User-Agent'] = 'Valora'
+    $wc.Headers['Accept'] = 'application/json'
+    $clave = Get-ClaveFC $entorno
+    if ($clave) { $wc.Headers['X-Valora-Key'] = $clave }
+    return $wc
+}
+
+function Invoke-FC([string]$metodo, [string]$ruta, $cuerpo, [scriptblock]$alTerminar, $ctx = $null, [string]$entorno = $script:fcEntorno) {
+    $wc = New-ClienteFC $entorno
+    $url = (Get-UrlFC $entorno) + '/api/valora' + $ruta
+    if ($metodo -eq 'GET') {
+        $tarea = $wc.DownloadStringTaskAsync($url)
+    } else {
+        $wc.Headers['Content-Type'] = 'application/json; charset=utf-8'
+        $tarea = $wc.UploadStringTaskAsync($url, $metodo, ($cuerpo | ConvertTo-Json -Depth 8 -Compress))
+    }
+    [void]$script:httpPend.Add(@{ tarea = $tarea; alTerminar = $alTerminar; ctx = $ctx; json = $true })
+    $timerHttp.Start()
+}
+
+function Get-ArchivoFC([string]$url, [string]$destino, [scriptblock]$alTerminar, $ctx) {
+    $wc = New-ClienteFC $script:fcEntorno
+    $tarea = $wc.DownloadFileTaskAsync($url, $destino)
+    [void]$script:httpPend.Add(@{ tarea = $tarea; alTerminar = $alTerminar; ctx = $ctx; json = $false })
+    $timerHttp.Start()
+}
+
+# --- Panel de fichas por tasar
+function Show-PanelFC {
+    $ui.PanelFC.Visibility = 'Visible'
+    Update-Entorno
+    if (-not (Get-ClaveFC)) {
+        $ui.ConexionFC.Visibility = 'Visible'
+        $ui.EstadoPanelFC.Text = "Falta la clave de Valora para $($script:fcEntorno). Pídesela al administrador y pégala arriba."
+        $ui.ListaFC.Children.Clear()
+        return
+    }
+    if ($ui.ListaFC.Children.Count -eq 0) { Get-PendientesFC $true }
+}
+
+function New-FilaFicha($f) {
+    $btn = New-Object System.Windows.Controls.Button
+    $btn.Style = $win.FindResource('Plano'); $btn.Padding = '8,8'; $btn.Margin = '0,0,0,2'; $btn.Tag = $f.id
+    $btn.HorizontalContentAlignment = 'Stretch'
+    $g = New-Object System.Windows.Controls.Grid
+    $c1 = New-Object System.Windows.Controls.ColumnDefinition; $c1.Width = 'Auto'
+    $c2 = New-Object System.Windows.Controls.ColumnDefinition
+    $g.ColumnDefinitions.Add($c1); $g.ColumnDefinitions.Add($c2)
+    $foto = New-Object System.Windows.Controls.Border
+    $foto.Width = 52; $foto.Height = 52; $foto.CornerRadius = 8; $foto.Background = Brush '#3A3A3A'; $foto.Margin = '0,0,12,0'
+    if ($f.foto) {
+        try {
+            $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
+            $bmp.BeginInit(); $bmp.UriSource = New-Object Uri($f.foto); $bmp.DecodePixelWidth = 104; $bmp.EndInit()
+            $ib = New-Object System.Windows.Media.ImageBrush $bmp; $ib.Stretch = 'UniformToFill'
+            $foto.Background = $ib
+        } catch {}
+    }
+    $sp = New-Object System.Windows.Controls.StackPanel; $sp.VerticalAlignment = 'Center'
+    $t = New-Object System.Windows.Controls.TextBlock
+    $t.Text = "#$($f.id) · $($f.nombre)"; $t.TextTrimming = 'CharacterEllipsis'; $t.FontSize = 14.5
+    $d = New-Object System.Windows.Controls.TextBlock
+    $d.Text = (@($f.tipo, $f.marca, $f.modelo, $f.estado) | Where-Object { $_ }) -join ' · '
+    $d.Foreground = Brush '#8E8E8E'; $d.FontSize = 12.5; $d.TextTrimming = 'CharacterEllipsis'
+    [void]$sp.Children.Add($t); [void]$sp.Children.Add($d)
+    [System.Windows.Controls.Grid]::SetColumn($sp, 1)
+    [void]$g.Children.Add($foto); [void]$g.Children.Add($sp)
+    $btn.Content = $g
+    [System.Windows.Automation.AutomationProperties]::SetName($btn, "Ficha $($f.id)")
+    $btn.Add_Click({ Open-FichaFC ([int]$this.Tag) })
+    return $btn
+}
+
+function Get-PendientesFC([bool]$reiniciar) {
+    if ($script:fcCargando) { return }
+    if ($reiniciar) { $script:fcPagina = 1; $ui.ListaFC.Children.Clear() }
+    $script:fcCargando = $true
+    $ui.EstadoPanelFC.Foreground = Brush '#8E8E8E'
+    $ui.EstadoPanelFC.Text = 'Cargando fichas…'
+    $q = [Uri]::EscapeDataString($ui.BuscarFC.Text.Trim())
+    $est = ''
+    if ($ui.EstadoFC.SelectedIndex -gt 0) { $est = [Uri]::EscapeDataString([string]$ui.EstadoFC.SelectedItem.Content) }
+    Invoke-FC 'GET' "/pendientes?per_page=30&page=$($script:fcPagina)&q=$q&estado=$est" $null {
+        param($res, $err, $ctx)
+        $script:fcCargando = $false
+        if ($err) { $ui.EstadoPanelFC.Foreground = Brush '#F28B82'; $ui.EstadoPanelFC.Text = "No se pudo cargar la lista: $err"; return }
+        foreach ($f in @($res.data)) { [void]$ui.ListaFC.Children.Add((New-FilaFicha $f)) }
+        $ui.BtnMasFC.Visibility = if ($res.meta.pagina -lt $res.meta.paginas) { 'Visible' } else { 'Collapsed' }
+        $ui.EstadoPanelFC.Text = "$($res.meta.total) fichas sin tasar con foto."
+        if ($res.meta.total -eq 0) { $ui.EstadoPanelFC.Text = 'No hay fichas sin tasar con esos filtros.' }
+    }
+}
+
+# --- Abrir una ficha: datos + reglas + fotos, y conversación nueva para tasarla.
+function Open-FichaFC([int]$id) {
+    if ($script:proc) { $ui.EstadoPanelFC.Text = 'Espera a que Valora termine la respuesta en curso.'; return }
+    $ui.EstadoPanelFC.Foreground = Brush '#8E8E8E'
+    $ui.EstadoPanelFC.Text = "Abriendo la ficha #$id…"
+    $ctx = @{ id = $id; entorno = $script:fcEntorno }
+    Invoke-FC 'GET' "/items/$id" $null {
+        param($res, $err, $ctx)
+        if ($err) { $ui.EstadoPanelFC.Foreground = Brush '#F28B82'; $ui.EstadoPanelFC.Text = "No se pudo abrir la ficha: $err"; return }
+        $ctx.item = $res
+        Invoke-FC 'GET' "/items/$($ctx.id)/contexto" $null {
+            param($res, $err, $ctx)
+            if ($err) { $ui.EstadoPanelFC.Foreground = Brush '#F28B82'; $ui.EstadoPanelFC.Text = "No se pudieron leer las reglas de tasación: $err"; return }
+            $ctx.contexto = $res
+            Get-FotosFC $ctx
+        } $ctx $ctx.entorno
+    } $ctx
+}
+
+function Get-FotosFC($ctx) {
+    $carpeta = Join-Path $script:workspace ("fichas\" + $ctx.entorno + "-" + $ctx.id)
+    New-Item -ItemType Directory -Force $carpeta | Out-Null
+    $ctx.fotos = New-Object System.Collections.ArrayList
+    $ctx.faltan = @($ctx.item.fotos).Count
+    if ($ctx.faltan -eq 0) { Start-TasacionFC $ctx; return }
+    $ui.EstadoPanelFC.Text = "Descargando $($ctx.faltan) fotos de la ficha #$($ctx.id)…"
+    $n = 0
+    foreach ($f in @($ctx.item.fotos)) {
+        $n++
+        $ext = [IO.Path]::GetExtension(([Uri]$f.url).AbsolutePath); if (-not $ext) { $ext = '.jpg' }
+        $destino = Join-Path $carpeta ("foto{0:00}-{1}{2}" -f $n, $f.tipo, $ext)
+        Get-ArchivoFC $f.url $destino {
+            param($res, $err, $c)
+            if (-not $err -and (Test-Path $c.destino)) { [void]$c.ctx.fotos.Add($c.destino) }
+            $c.ctx.faltan--
+            if ($c.ctx.faltan -le 0) { Start-TasacionFC $c.ctx }
+        } @{ ctx = $ctx; destino = $destino }
+    }
+}
+
+function Start-TasacionFC($ctx) {
+    $it = $ctx.item
+    $nombre = if ($it.ficha.description_es) { $it.ficha.description_es } else { "sin nombre" }
+    $ui.PanelFC.Visibility = 'Collapsed'
+    New-ConvVacia
+    $script:fichaPendiente = [pscustomobject]@{
+        id = $it.id; nombre = $nombre; entorno = $ctx.entorno; url_admin = $it.url_admin; ajuste_manual = [bool]$it.ajuste_manual
+    }
+    $script:archivos.Clear()
+    foreach ($f in $ctx.fotos) { [void]$script:archivos.Add($f) }
+    Update-Adjuntos
+
+    $actuales = @()
+    foreach ($pr in $it.ficha.PSObject.Properties) {
+        if ($null -ne $pr.Value -and "$($pr.Value)" -ne '') { $actuales += "- $($pr.Name): $($pr.Value)" }
+    }
+    if ($it.textos.tipo) { $actuales += "- tipo (nombre): $($it.textos.tipo)" }
+    if ($it.textos.marca) { $actuales += "- marca (nombre): $($it.textos.marca)" }
+    if ($it.textos.made_in) { $actuales += "- made_in (ISO): $($it.textos.made_in)" }
+
+    $c = $ctx.contexto
+    $instr = "Vas a tasar la ficha #$($it.id) de Foticos Collection (entorno $($ctx.entorno)) a partir de sus fotos adjuntas. " +
+        "Sigue EXACTAMENTE las reglas de tasación de la web, que son estas:`n`n=== REGLAS DE TASACIÓN ===`n$($c.system)`n`n" +
+        "=== DATOS DE LA FICHA ===`n$($c.user)`nValores actuales de la ficha (pueden estar vacíos o venir de una tasación automática anterior):`n" + ($actuales -join "`n") + "`n`n" +
+        "=== FORMATO DE ESTA CONVERSACIÓN (prevalece sobre la indicación de responder solo con JSON) ===`n" +
+        "1. Primero explica en 3-6 líneas qué pieza es y en qué te basas para datarla y valorarla.`n" +
+        "2. Después escribe la tasación en un bloque de código ``````json con este esquema:`n$($c.esquema)`n$($c.campos_extra)`n" +
+        "3. Si más adelante en esta conversación cambia cualquier dato (porque te lo pido o porque lo corriges), vuelve a escribir el bloque ``````json COMPLETO con todos los campos actualizados.`n" +
+        "4. No crees ni modifiques archivos: solo responde. El envío a Foticos Collection lo hace la persona desde Valora."
+    if ($ctx.fotos.Count -eq 0) {
+        $instr += "`n`nAVISO: no se ha podido descargar ninguna foto de esta ficha. Dilo claramente y tasa solo con los datos."
+    }
+
+    $ui.Prompt.Text = "Tasa la ficha #$($it.id) de Foticos Collection: $nombre."
+    Enviar $instr
+    Update-BarraFicha
+    if ($ctx.fotos.Count -lt @($it.fotos).Count) {
+        Set-Estado "Ojo: solo se descargaron $($ctx.fotos.Count) de $(@($it.fotos).Count) fotos de la ficha." '#E8A33D'
+    }
+}
+
+# --- Barra de la ficha activa y detección de la tasación en la conversación.
+function Get-UltimaTasacion {
+    if (-not $script:conv) { return $null }
+    $claves = @('description_es', 'actual_value', 'valor_max', 'status_piece', 'detail_es', 'richtext_description_es')
+    $msgs = @($script:conv.mensajes)
+    for ($i = $msgs.Count - 1; $i -ge 0; $i--) {
+        if ($msgs[$i].rol -ne 'agy') { continue }
+        $bloques = [regex]::Matches([string]$msgs[$i].texto, '```(?:json)?\s*(\{[\s\S]*?\})\s*```')
+        for ($k = $bloques.Count - 1; $k -ge 0; $k--) {
+            try {
+                $obj = $bloques[$k].Groups[1].Value | ConvertFrom-Json -ErrorAction Stop
+                $nombres = @($obj.PSObject.Properties.Name)
+                if (@($claves | Where-Object { $nombres -contains $_ }).Count -gt 0) { return $obj }
+            } catch {}
+        }
+    }
+    return $null
+}
+
+function Update-BarraFicha {
+    $f = if ($script:conv) { $script:conv.ficha } else { $script:fichaPendiente }
+    if (-not $f) { $ui.BarraFicha.Visibility = 'Collapsed'; $script:tasacionDetectada = $null; return }
+    $ui.BarraFicha.Visibility = 'Visible'
+    Set-Insignia $ui.BarraEntorno $ui.TxtBarraEntorno $f.entorno
+    $ui.TxtBarraFicha.Text = "Ficha #$($f.id) · $($f.nombre)"
+    $script:tasacionDetectada = Get-UltimaTasacion
+    $envios = @($script:conv.envios | Where-Object { $_ })
+    $ui.BtnRevisarEnviar.IsEnabled = [bool]$script:tasacionDetectada -and -not $script:proc
+    if ($envios.Count -gt 0) {
+        $ultimo = $envios[-1]
+        $ui.TxtBarraEstado.Text = 'Enviada ' + ([datetime]$ultimo.fecha).ToString('dd/MM HH:mm')
+        $ui.BtnRevisarEnviar.Content = 'Revisar y volver a enviar'
+    } else {
+        $ui.TxtBarraEstado.Text = if ($script:tasacionDetectada) { 'Tasación lista para revisar' } else { 'Esperando la tasación…' }
+        $ui.BtnRevisarEnviar.Content = 'Revisar y enviar tasación'
+    }
+}
+
+# --- Confirmación: el servidor calcula el antes/después (simular) y solo se
+#     guarda al pulsar "Sí, enviar tasación".
+function Add-CeldaTabla([int]$fila, [int]$col, [string]$texto, [string]$color = '#ECECEC', [bool]$negrita = $false) {
+    $t = New-Object System.Windows.Controls.TextBox
+    $t.Text = $texto; $t.IsReadOnly = $true; $t.BorderThickness = 0; $t.Background = 'Transparent'
+    $t.Foreground = Brush $color; $t.TextWrapping = 'Wrap'; $t.FontSize = 13.5; $t.Margin = '0,6,12,6'
+    if ($negrita) { $t.FontWeight = 'SemiBold' }
+    [System.Windows.Controls.Grid]::SetRow($t, $fila); [System.Windows.Controls.Grid]::SetColumn($t, $col)
+    [void]$ui.TablaCambios.Children.Add($t)
+}
+
+function ConvertTo-TextoVisible($v) {
+    if ($null -eq $v -or "$v" -eq '') { return '—' }
+    $s = [string]$v -replace '<li>', "`n• " -replace '</p>\s*<p>', "`n`n" -replace '<[^>]+>', ''
+    $s = [System.Net.WebUtility]::HtmlDecode($s).Trim()
+    if ($s.Length -gt 400) { $s = $s.Substring(0, 400) + '…' }
+    return $s
+}
+
+function Show-Confirmar {
+    if (-not $script:conv -or -not $script:conv.ficha -or -not $script:tasacionDetectada) { return }
+    $f = $script:conv.ficha
+    $script:simulacion = $null
+    Set-Insignia $ui.ConfEntorno $ui.TxtConfEntorno $f.entorno
+    $ui.TxtConfPieza.Text = "Ficha #$($f.id) · $($f.nombre)"
+    $ui.TxtConfAviso.Text = ''
+    $ui.TxtConfEstado.Foreground = Brush '#8E8E8E'
+    $ui.TxtConfEstado.Text = 'Calculando qué cambiaría en la ficha…'
+    $ui.TablaCambios.Children.Clear(); $ui.TablaCambios.RowDefinitions.Clear(); $ui.TablaCambios.ColumnDefinitions.Clear()
+    $ui.BtnConfEnviar.IsEnabled = $false
+    $ui.BtnConfEnviar.Content = "Sí, enviar tasación a Foticos Collection ($($f.entorno))"
+    $ui.PanelConfirmar.Visibility = 'Visible'
+
+    Invoke-FC 'POST' "/items/$($f.id)/tasacion" @{ simular = $true; datos = $script:tasacionDetectada } {
+        param($res, $err, $ctx)
+        if ($err) { $ui.TxtConfEstado.Foreground = Brush '#F28B82'; $ui.TxtConfEstado.Text = "No se pudo preparar el envío: $err"; return }
+        $script:simulacion = $res
+        foreach ($w in '170', '*', '*') {
+            $cd = New-Object System.Windows.Controls.ColumnDefinition
+            $cd.Width = if ($w -eq '*') { New-Object System.Windows.GridLength(1, 'Star') } else { New-Object System.Windows.GridLength([double]$w) }
+            $ui.TablaCambios.ColumnDefinitions.Add($cd)
+        }
+        $filas = @($res.cambios)
+        for ($i = 0; $i -le $filas.Count; $i++) { $ui.TablaCambios.RowDefinitions.Add((New-Object System.Windows.Controls.RowDefinition)) }
+        Add-CeldaTabla 0 0 'Campo' '#8E8E8E' $true
+        Add-CeldaTabla 0 1 'Ahora en Foticos Collection' '#8E8E8E' $true
+        Add-CeldaTabla 0 2 'Se enviará' '#8E8E8E' $true
+        $i = 1
+        foreach ($c in $filas) {
+            Add-CeldaTabla $i 0 $c.etiqueta '#CFCFCF' $true
+            Add-CeldaTabla $i 1 (ConvertTo-TextoVisible $c.antes) $(if ($c.cambia) { '#F2A38B' } else { '#8E8E8E' })
+            Add-CeldaTabla $i 2 (ConvertTo-TextoVisible $c.despues) $(if ($c.cambia) { '#81C995' } else { '#8E8E8E' })
+            $i++
+        }
+        $avisos = @()
+        if ($res.ajuste_manual -and @($res.protegidos).Count -gt 0) { $avisos += 'Ficha con ajuste manual: no se tocarán ' + (@($res.protegidos) -join ', ') + '.' }
+        $avisos += @($res.avisos)
+        $ui.TxtConfAviso.Text = ($avisos | Where-Object { $_ }) -join "`n"
+        $nCambian = @($filas | Where-Object { $_.cambia }).Count
+        if ($nCambian -eq 0) {
+            $ui.TxtConfEstado.Text = 'La tasación no cambia nada de la ficha: no hay nada que enviar.'
+        } else {
+            $ui.TxtConfEstado.Text = "Se cambiarán $nCambian campos de la ficha #$($res.item_id) en $($script:conv.ficha.entorno). Revisa la tabla: al pulsar el botón verde se guarda en Foticos Collection junto con esta conversación."
+            $ui.BtnConfEnviar.IsEnabled = $true
+        }
+    } $null $f.entorno
+}
+
+function Send-TasacionFC {
+    if (-not $script:simulacion -or -not $script:conv.ficha) { return }
+    $f = $script:conv.ficha
+    $ui.BtnConfEnviar.IsEnabled = $false
+    $ui.TxtConfEstado.Foreground = Brush '#8E8E8E'
+    $ui.TxtConfEstado.Text = 'Enviando…'
+    $mensajes = @($script:conv.mensajes | ForEach-Object {
+        @{ rol = $_.rol; texto = $_.texto; adjuntos = @(@($_.adjuntos) | Where-Object { $_ } | ForEach-Object { Split-Path $_ -Leaf }) }
+    })
+    $verLocal = (Get-VersionLocal).sha
+    $cuerpo = @{
+        datos = $script:tasacionDetectada
+        conversacion = $mensajes
+        agy_conversacion_id = $script:conv.agyId
+        valora_version = $(if ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
+    }
+    Invoke-FC 'POST' "/items/$($f.id)/tasacion" $cuerpo {
+        param($res, $err, $ctx)
+        if ($err) {
+            $ui.TxtConfEstado.Foreground = Brush '#F28B82'; $ui.TxtConfEstado.Text = "No se ha guardado. Motivo: $err"
+            $ui.BtnConfEnviar.IsEnabled = $true
+            return
+        }
+        $ui.PanelConfirmar.Visibility = 'Collapsed'
+        $envio = [pscustomobject]@{ fecha = (Get-Date).ToString('o'); tasacion_id = $res.tasacion_id; url_conversacion = $res.url_conversacion; campos = @($res.cambios | ForEach-Object { $_.campo }) }
+        $script:conv.envios = @($script:conv.envios | Where-Object { $_ }) + @($envio)
+        $texto = "✓ Tasación enviada a Foticos Collection ($($script:conv.ficha.entorno)), ficha #$($res.item_id). " +
+            "Campos guardados: " + (@($res.cambios | ForEach-Object { $_.etiqueta }) -join ', ') + ".`n" +
+            "Ficha: $($res.url_admin)`nConversación guardada: $($res.url_conversacion)"
+        Add-MensajeAgyTexto $texto
+        $script:conv.mensajes = @($script:conv.mensajes) + @([pscustomobject]@{ rol = 'sistema'; texto = $texto; adjuntos = @() })
+        Save-Conv
+        Update-ListaConv
+        Update-BarraFicha
+        $ui.Scroll.ScrollToEnd()
+        Set-Estado 'Tasación enviada a Foticos Collection.' '#81C995'
+    } $null $f.entorno
+}
+
+# --- Eventos de Foticos Collection
+$ui.BtnFichas.Add_Click({ Show-PanelFC })
+$ui.BtnCerrarFC.Add_Click({ $ui.PanelFC.Visibility = 'Collapsed' })
+$ui.BtnConexionFC.Add_Click({ $ui.ConexionFC.Visibility = if ($ui.ConexionFC.Visibility -eq 'Visible') { 'Collapsed' } else { 'Visible' } })
+$ui.BtnBuscarFC.Add_Click({ Get-PendientesFC $true })
+$ui.BuscarFC.Add_KeyDown({ if ($_.Key -eq 'Return') { Get-PendientesFC $true; $_.Handled = $true } })
+$ui.BtnMasFC.Add_Click({ $script:fcPagina++; Get-PendientesFC $false })
+$ui.RadPRE.Add_Click({ $script:fcEntorno = 'PRE'; Save-Config; Update-Entorno; $ui.ListaFC.Children.Clear(); Show-PanelFC })
+$ui.RadPRO.Add_Click({ $script:fcEntorno = 'PRO'; Save-Config; Update-Entorno; $ui.ListaFC.Children.Clear(); Show-PanelFC })
+$ui.BtnGuardarConexion.Add_Click({
+    if ($ui.ClaveFC.Password) { Set-ClaveFC $ui.ClaveFC.Password.Trim(); $ui.ClaveFC.Clear() }
+    if (-not (Get-ClaveFC)) { $ui.EstadoPanelFC.Text = 'Pega la clave antes de guardar.'; return }
+    $ui.EstadoPanelFC.Foreground = Brush '#8E8E8E'; $ui.EstadoPanelFC.Text = 'Probando la conexión…'
+    Invoke-FC 'GET' '/estado' $null {
+        param($res, $err, $ctx)
+        if ($err) { $ui.EstadoPanelFC.Foreground = Brush '#F28B82'; $ui.EstadoPanelFC.Text = "No conecta con $($script:fcEntorno): $err"; return }
+        $ui.EstadoPanelFC.Foreground = Brush '#81C995'
+        $ui.EstadoPanelFC.Text = "Conectado a $($script:fcEntorno) como $($res.nombre)" + $(if ($res.puede_escribir) { '.' } else { ' (solo lectura).' })
+        $ui.ConexionFC.Visibility = 'Collapsed'
+        Get-PendientesFC $true
+    }
+})
+$ui.BtnAbrirFicha.Add_Click({ if ($script:conv -and $script:conv.ficha.url_admin) { Start-Process $script:conv.ficha.url_admin } })
+$ui.BtnRevisarEnviar.Add_Click({ Show-Confirmar })
+$ui.BtnConfCancelar.Add_Click({ $ui.PanelConfirmar.Visibility = 'Collapsed'; Set-Estado 'Envío cancelado: no se ha guardado nada.' })
+$ui.BtnConfEnviar.Add_Click({ Send-TasacionFC })
+$win.Add_PreviewKeyDown({
+    if ($_.Key -eq 'Escape') {
+        if ($ui.PanelConfirmar.Visibility -eq 'Visible') { $ui.PanelConfirmar.Visibility = 'Collapsed'; $_.Handled = $true }
+        elseif ($ui.PanelFC.Visibility -eq 'Visible') { $ui.PanelFC.Visibility = 'Collapsed'; $_.Handled = $true }
+    }
 })
 
 # ---------- Actualización automática ----------
@@ -1343,6 +1944,7 @@ $win.Add_Closing({
 $ui.TxtWs.Text = $script:workspace; $ui.TxtWs.ToolTip = $script:workspace
 $ui.ChkAuto.IsChecked = $cfg.auto
 Update-Adjuntos; Update-Carpetas; Update-Inicio; Update-ListaConv
+Update-Entorno; Update-BarraFicha
 $verLocal = (Get-VersionLocal).sha
 $ui.TxtVersion.Text = 'Versión ' + $(if ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
 $ui.TxtCuenta.Text = 'Comprobando…'; $ui.BtnLogout.Visibility = 'Collapsed'
