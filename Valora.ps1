@@ -6,6 +6,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 
 # Repositorio de GitHub desde el que Valora se actualiza sola (usuario/repositorio).
 $RepoValora = 'rubencandeal-a11y/valora'
+$RutaValora = $MyInvocation.MyCommand.Path   # ruta de este script, para reemplazarlo al actualizar
 
 $ConfigDir  = Join-Path $env:LOCALAPPDATA 'Valora'
 $ConfigFile = Join-Path $ConfigDir 'config.json'
@@ -1211,7 +1212,12 @@ $script:upd = $null
 $script:pendienteReinicio = $false
 
 function Get-VersionLocal {
-    try { return (Get-Content $VersionFile -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return [pscustomobject]@{ sha = ''; agyUpdate = '' } }
+    $vacio = [pscustomobject]@{ sha = ''; agyUpdate = '' }
+    if (-not (Test-Path $VersionFile)) { return $vacio }
+    try {
+        $v = Get-Content $VersionFile -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
+        if ($v) { return $v } else { return $vacio }
+    } catch { return $vacio }
 }
 function Save-VersionLocal($v) { $v | ConvertTo-Json | Set-Content $VersionFile -Encoding UTF8 }
 
@@ -1223,6 +1229,15 @@ function New-Cliente {
     return $wc
 }
 
+# Registro de la actualización, para poder diagnosticar un PC sin estar delante.
+function Write-LogUpd([string]$m) {
+    try {
+        $f = Join-Path $ConfigDir 'actualizacion.log'
+        if ((Test-Path $f) -and (Get-Item $f).Length -gt 200KB) { Remove-Item $f -Force }
+        Add-Content $f ('{0:yyyy-MM-dd HH:mm:ss} {1}' -f (Get-Date), $m) -Encoding UTF8
+    } catch {}
+}
+
 function Start-BuscarActualizacion {
     if ($RepoValora -eq '__REPO__' -or $script:upd) { return }
     try {
@@ -1230,12 +1245,12 @@ function Start-BuscarActualizacion {
         $wc.Headers['Accept'] = 'application/vnd.github.sha'
         $script:upd = @{ paso = 'sha'; tarea = $wc.DownloadStringTaskAsync("https://api.github.com/repos/$RepoValora/commits/main") }
         $timerUpd.Start()
-    } catch { $script:upd = $null }
+    } catch { $script:upd = $null; Write-LogUpd ('no se pudo consultar GitHub: ' + $_.Exception.Message) }
 }
 
 function Restart-Valora {
     Save-Config
-    Start-Process powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $PSCommandPath)
+    Start-Process powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $RutaValora)
     $win.Close()
 }
 
@@ -1245,11 +1260,18 @@ $timerUpd.Add_Tick({
     if (-not $script:upd) { $timerUpd.Stop(); return }
     if (-not $script:upd.tarea.IsCompleted) { return }
     $u = $script:upd
-    if ($u.tarea.IsFaulted -or $u.tarea.IsCanceled) { $script:upd = $null; $timerUpd.Stop(); return }
+    if ($u.tarea.IsFaulted -or $u.tarea.IsCanceled) {
+        $script:upd = $null; $timerUpd.Stop()
+        $err = if ($u.tarea.Exception) { $u.tarea.Exception.GetBaseException().Message } else { 'cancelada' }
+        Write-LogUpd ("fallo en el paso '$($u.paso)': $err")
+        return
+    }
     if ($u.paso -eq 'sha') {
         $sha = $u.tarea.Result.Trim()
         $local = Get-VersionLocal
         if ($sha -notmatch '^[0-9a-f]{40}$' -or $sha -eq $local.sha) { $script:upd = $null; $timerUpd.Stop(); return }
+        Write-LogUpd "versión nueva $sha (local: '$($local.sha)'), descargando"
+
         $wc = New-Cliente
         $script:upd = @{ paso = 'codigo'; sha = $sha; tarea = $wc.DownloadStringTaskAsync("https://raw.githubusercontent.com/$RepoValora/$sha/Valora.ps1") }
         return
@@ -1259,14 +1281,15 @@ $timerUpd.Add_Tick({
         $codigo = $u.tarea.Result
         $errores = $null
         [void][System.Management.Automation.Language.Parser]::ParseInput($codigo, [ref]$null, [ref]$errores)
-        if ($errores.Count -gt 0 -or $codigo -notmatch 'RepoValora') { return }   # descarga rota: no se toca nada
+        if ($errores.Count -gt 0 -or $codigo -notmatch 'RepoValora') { Write-LogUpd 'descarga no válida, no se aplica'; return }
         try {
-            [IO.File]::WriteAllText($PSCommandPath, $codigo, (New-Object System.Text.UTF8Encoding($true)))
+            [IO.File]::WriteAllText($RutaValora, $codigo, (New-Object System.Text.UTF8Encoding($true)))
             try { (New-Cliente).DownloadFile("https://raw.githubusercontent.com/$RepoValora/$($u.sha)/src/valora.ico", (Join-Path $ConfigDir 'valora.ico')) } catch {}
             $v = Get-VersionLocal
             $v | Add-Member -NotePropertyName sha -NotePropertyValue $u.sha -Force
             Save-VersionLocal $v
-        } catch { return }
+        } catch { Write-LogUpd ('no se pudo escribir la versión nueva: ' + $_.Exception.Message); return }
+        Write-LogUpd "aplicada la versión $($u.sha)"
         # Si no se está usando, reinicia ya; si hay trabajo en marcha, avisa y espera.
         if (-not $script:proc -and $ui.Chat.Children.Count -eq 0 -and -not $ui.Prompt.Text -and $script:archivos.Count -eq 0) {
             Restart-Valora
