@@ -215,6 +215,7 @@ $script:pensando = $true
             </Grid>
           </Border>
           <TextBlock x:Name="TxtEstado" Foreground="#8E8E8E" FontSize="12" TextWrapping="Wrap" Margin="12,10,8,0"/>
+          <TextBlock x:Name="TxtVersion" Foreground="#5A5A5A" FontSize="11" Margin="12,4,8,0"/>
         </StackPanel>
         <DockPanel Margin="0,4,0,8">
           <TextBlock DockPanel.Dock="Top" Text="CONVERSACIONES" Style="{StaticResource Seccion}"/>
@@ -349,7 +350,7 @@ $ui = @{}
 foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpeta','ChkAuto','BtnTerminal','TxtEstado',
                'Scroll','Chat','Inicio','Sugerencias','Adjuntos','BtnAdjuntar','Prompt','Placeholder','BtnEnviar','IcoEnviar',
                'Login','LoginTexto','BtnLogin','LoginCodigo','CodigoLogin','BtnReabrir','BtnCodigo','LoginEstado','BtnLoginLuego',
-               'TxtCuenta','BtnLogout','ListaConv','AvisoVersion','BtnReiniciar') {
+               'TxtCuenta','BtnLogout','ListaConv','AvisoVersion','BtnReiniciar','TxtVersion') {
     $ui[$n] = $win.FindName($n)
 }
 $icono = Join-Path $ConfigDir 'valora.ico'
@@ -1342,6 +1343,8 @@ $win.Add_Closing({
 $ui.TxtWs.Text = $script:workspace; $ui.TxtWs.ToolTip = $script:workspace
 $ui.ChkAuto.IsChecked = $cfg.auto
 Update-Adjuntos; Update-Carpetas; Update-Inicio; Update-ListaConv
+$verLocal = (Get-VersionLocal).sha
+$ui.TxtVersion.Text = 'Versión ' + $(if ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
 $ui.TxtCuenta.Text = 'Comprobando…'; $ui.BtnLogout.Visibility = 'Collapsed'
 if ($script:Agy) {
     Set-Estado 'Comprobando la sesión de Google…'
