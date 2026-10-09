@@ -1698,6 +1698,17 @@ function Show-Confirmar {
     $ui.BtnConfEnviar.Content = "Sí, enviar tasación a Foticos Collection ($($f.entorno))"
     $ui.PanelConfirmar.Visibility = 'Visible'
 
+    # Primero se mira si la clave de ese entorno puede escribir (en PRO, de
+    # momento, las claves son de solo lectura): así el botón sale bloqueado.
+    $script:puedeEscribir = $false
+    Invoke-FC 'GET' '/estado' $null {
+        param($res, $err, $ctx)
+        $script:puedeEscribir = (-not $err) -and [bool]$res.puede_escribir
+        Start-SimulacionFC $ctx
+    } $f $f.entorno
+}
+
+function Start-SimulacionFC($f) {
     Invoke-FC 'POST' "/items/$($f.id)/tasacion" @{ simular = $true; datos = $script:tasacionDetectada } {
         param($res, $err, $ctx)
         if ($err) { $ui.TxtConfEstado.Foreground = Brush '#F28B82'; $ui.TxtConfEstado.Text = "No se pudo preparar el envío: $err"; return }
@@ -1726,6 +1737,10 @@ function Show-Confirmar {
         $nCambian = @($filas | Where-Object { $_.cambia }).Count
         if ($nCambian -eq 0) {
             $ui.TxtConfEstado.Text = 'La tasación no cambia nada de la ficha: no hay nada que enviar.'
+        } elseif (-not $script:puedeEscribir) {
+            $ui.TxtConfEstado.Foreground = Brush '#E8A33D'
+            $ui.TxtConfEstado.Text = "Tu clave de $($script:conv.ficha.entorno) es de SOLO LECTURA: puedes ver qué cambiaría ($nCambian campos), pero no enviarlo. Cuando se active la escritura, este botón se habilitará solo."
+            $ui.BtnConfEnviar.Content = "Solo lectura en $($script:conv.ficha.entorno): no se puede enviar"
         } else {
             $ui.TxtConfEstado.Text = "Se cambiarán $nCambian campos de la ficha #$($res.item_id) en $($script:conv.ficha.entorno). Revisa la tabla: al pulsar el botón verde se guarda en Foticos Collection junto con esta conversación."
             $ui.BtnConfEnviar.IsEnabled = $true
