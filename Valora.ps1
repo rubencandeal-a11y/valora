@@ -504,7 +504,15 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
     $ui[$n] = $win.FindName($n)
 }
 $icono = Join-Path $ConfigDir 'valora.ico'
-if (Test-Path $icono) { try { $win.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create((New-Object Uri $icono)) } catch {} }
+# Se carga desde memoria para no dejar el fichero bloqueado: el actualizador tiene que poder sustituirlo.
+function Set-IconoVentana {
+    if (-not (Test-Path $icono)) { return }
+    try {
+        $ms = New-Object System.IO.MemoryStream(,[IO.File]::ReadAllBytes($icono))
+        $win.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create($ms, 'None', 'OnLoad')
+    } catch {}
+}
+Set-IconoVentana
 
 $conversorColor = New-Object System.Windows.Media.BrushConverter
 function Brush([string]$hex) { return $conversorColor.ConvertFromString($hex) }
@@ -1838,26 +1846,6 @@ function Get-VersionLocal {
 }
 function Save-VersionLocal($v) { $v | ConvertTo-Json | Set-Content $VersionFile -Encoding UTF8 }
 
-# Si el icono ha cambiado (lo baja el actualizador), Windows sigue enseñando el viejo
-# en los accesos directos hasta que se le avisa de que refresque su caché de iconos.
-function Update-IconoEscritorio {
-    try {
-        if (-not (Test-Path $icono)) { return }
-        $hash = (Get-FileHash $icono -Algorithm SHA256).Hash
-        $v = Get-VersionLocal
-        if ($v.icono -eq $hash) { return }
-        if (-not ('Valora.Shell' -as [type])) {
-            Add-Type -Namespace Valora -Name Shell -MemberDefinition '[DllImport("shell32.dll")] public static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);'
-        }
-        [Valora.Shell]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
-        $ie4 = Join-Path $env:WINDIR 'System32\ie4uinit.exe'
-        if (Test-Path $ie4) { Start-Process $ie4 -ArgumentList '-show' -WindowStyle Hidden }
-        $v | Add-Member -NotePropertyName icono -NotePropertyValue $hash -Force
-        Save-VersionLocal $v
-        Write-LogUpd 'icono nuevo: refrescada la caché de iconos de Windows'
-    } catch {}
-}
-
 function New-Cliente {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072
     $wc = New-Object System.Net.WebClient
@@ -1874,7 +1862,47 @@ function Write-LogUpd([string]$m) {
         Add-Content $f ('{0:yyyy-MM-dd HH:mm:ss} {1}' -f (Get-Date), $m) -Encoding UTF8
     } catch {}
 }
-Update-IconoEscritorio
+
+# El icono va con cada versión publicada. Se baja aparte (en segundo plano) cuando la versión
+# instalada todavía no tiene el suyo, y luego se avisa a Windows para que refresque la caché de
+# iconos; si no, los accesos directos siguen enseñando el viejo.
+function Start-ActualizarIcono {
+    $v = Get-VersionLocal
+    if (-not $v.sha -or $v.iconoSha -eq $v.sha -or $script:updIcono -or $RepoValora -eq '__REPO__') { return }
+    try {
+        $script:updIcono = @{ sha = $v.sha; tarea = (New-Cliente).DownloadDataTaskAsync("https://raw.githubusercontent.com/$RepoValora/$($v.sha)/src/valora.ico") }
+        $timerIcono.Start()
+    } catch { $script:updIcono = $null; Write-LogUpd ('no se pudo bajar el icono: ' + $_.Exception.Message) }
+}
+
+$timerIcono = New-Object System.Windows.Threading.DispatcherTimer
+$timerIcono.Interval = [TimeSpan]::FromMilliseconds(500)
+$timerIcono.Add_Tick({
+    if (-not $script:updIcono) { $timerIcono.Stop(); return }
+    if (-not $script:updIcono.tarea.IsCompleted) { return }
+    $u = $script:updIcono; $script:updIcono = $null; $timerIcono.Stop()
+    if ($u.tarea.IsFaulted -or $u.tarea.IsCanceled) { Write-LogUpd 'no se pudo bajar el icono'; return }
+    try {
+        $datos = $u.tarea.Result
+        if ($datos.Length -lt 6 -or $datos[0] -ne 0 -or $datos[2] -ne 1) { Write-LogUpd 'el icono descargado no es un .ico'; return }
+        $cambia = -not (Test-Path $icono) -or ((Get-FileHash $icono -Algorithm SHA256).Hash -ne
+            [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($datos)).Replace('-', ''))
+        if ($cambia) {
+            [IO.File]::WriteAllBytes($icono, $datos)
+            Set-IconoVentana
+            if (-not ('Valora.Shell' -as [type])) {
+                Add-Type -Namespace Valora -Name Shell -MemberDefinition '[DllImport("shell32.dll")] public static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);'
+            }
+            [Valora.Shell]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
+            $ie4 = Join-Path $env:WINDIR 'System32\ie4uinit.exe'
+            if (Test-Path $ie4) { Start-Process $ie4 -ArgumentList '-show' -WindowStyle Hidden }
+            Write-LogUpd "icono nuevo de la versión $($u.sha) instalado y caché de iconos refrescada"
+        }
+        $v = Get-VersionLocal
+        $v | Add-Member -NotePropertyName iconoSha -NotePropertyValue $u.sha -Force
+        Save-VersionLocal $v
+    } catch { Write-LogUpd ('no se pudo instalar el icono: ' + $_.Exception.Message) }
+})
 
 function Start-BuscarActualizacion {
     if ($RepoValora -eq '__REPO__' -or $script:upd) { return }
@@ -1922,12 +1950,12 @@ $timerUpd.Add_Tick({
         if ($errores.Count -gt 0 -or $codigo -notmatch 'RepoValora') { Write-LogUpd 'descarga no válida, no se aplica'; return }
         try {
             [IO.File]::WriteAllText($RutaValora, $codigo, (New-Object System.Text.UTF8Encoding($true)))
-            try { (New-Cliente).DownloadFile("https://raw.githubusercontent.com/$RepoValora/$($u.sha)/src/valora.ico", (Join-Path $ConfigDir 'valora.ico')) } catch {}
             $v = Get-VersionLocal
             $v | Add-Member -NotePropertyName sha -NotePropertyValue $u.sha -Force
             Save-VersionLocal $v
         } catch { Write-LogUpd ('no se pudo escribir la versión nueva: ' + $_.Exception.Message); return }
         Write-LogUpd "aplicada la versión $($u.sha)"
+        Start-ActualizarIcono
         # Si no se está usando, reinicia ya; si hay trabajo en marcha, avisa y espera.
         if (-not $script:proc -and $ui.Chat.Children.Count -eq 0 -and -not $ui.Prompt.Text -and $script:archivos.Count -eq 0) {
             Restart-Valora
@@ -1993,6 +2021,7 @@ if ($script:Agy) {
 $win.Add_ContentRendered({
     $ui.Prompt.Focus() | Out-Null
     Start-BuscarActualizacion
+    Start-ActualizarIcono
     Start-ActualizarAgy
     $timerRevisar.Start()
 })
