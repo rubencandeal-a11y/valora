@@ -2054,6 +2054,35 @@ $win.Add_Activated({
     if (((Get-Date) - $script:ultimaRevision).TotalMinutes -ge 5) { Start-BuscarActualizacion }
 })
 
+# Aviso rápido: cada publicación cambia version.txt en el repositorio. Valora lo lee cada 20 s
+# desde raw.githubusercontent.com (sin límite de consultas; el ?t= evita la caché) y, en cuanto
+# cambia, pregunta a la API de GitHub cuál es la versión nueva y se actualiza.
+$script:marcaVista = $null
+$script:tareaMarca = $null
+$timerMarca = New-Object System.Windows.Threading.DispatcherTimer
+$timerMarca.Interval = [TimeSpan]::FromSeconds(20)
+$timerMarca.Add_Tick({
+    if ($RepoValora -eq '__REPO__') { $timerMarca.Stop(); return }
+    $t = $script:tareaMarca
+    if ($t) {
+        if (-not $t.IsCompleted) { return }
+        $script:tareaMarca = $null
+        if (-not $t.IsFaulted -and -not $t.IsCanceled) {
+            $marca = $t.Result.Trim()
+            if ($marca -and $script:marcaVista -and $marca -ne $script:marcaVista) {
+                Write-LogUpd "aviso de versión nueva: $marca"
+                Start-BuscarActualizacion
+            }
+            if ($marca) { $script:marcaVista = $marca }
+        }
+    }
+    try {
+        $wc = New-Cliente
+        $wc.Headers['Cache-Control'] = 'no-cache'
+        $script:tareaMarca = $wc.DownloadStringTaskAsync("https://raw.githubusercontent.com/$RepoValora/main/version.txt?t=" + [DateTime]::UtcNow.Ticks)
+    } catch {}
+})
+
 # Arrastrar y soltar en cualquier parte de la ventana (también sobre la caja de texto).
 $win.Add_PreviewDragOver({
     if ($_.Data.GetDataPresent([System.Windows.DataFormats]::FileDrop)) {
@@ -2119,5 +2148,6 @@ $win.Add_ContentRendered({
     Start-ActualizarIcono
     Start-ActualizarAgy
     $timerRevisar.Start()
+    $timerMarca.Start()
 })
 [void]$win.ShowDialog()

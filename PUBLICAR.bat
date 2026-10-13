@@ -8,6 +8,8 @@ set "MSG=%~1"
 if "%MSG%"=="" set "MSG=Actualización de Valora"
 
 call "%~dp0COMPILAR.bat" || exit /b 1
+rem version.txt cambia en cada publicación: los PC lo miran cada 20 s para enterarse al momento.
+powershell -NoProfile -Command "[IO.File]::WriteAllText('version.txt', (Get-Date).ToString('o'))" || exit /b 1
 
 git add -A || exit /b 1
 git diff --cached --quiet && (
