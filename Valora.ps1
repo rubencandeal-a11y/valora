@@ -171,13 +171,13 @@ $script:pensando = $true
             </Border>
             <TextBlock Text="Valora" FontSize="18" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
             <Button x:Name="BtnReiniciarTitulo" Margin="10,0,0,0" VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed"
-                    ToolTip="Hay una versión nueva de Valora. Pulsa para reiniciar y aplicarla.">
+                    ToolTip="Hay una versión nueva de Valora. Se aplica sola en cuanto no estés usando la ventana; pulsa para aplicarla ya.">
               <Button.Template>
                 <ControlTemplate TargetType="Button">
                   <Border x:Name="Fondo" Background="#2E7D5A" CornerRadius="10" Padding="8,3">
                     <StackPanel Orientation="Horizontal">
                       <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="10" Foreground="White" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                      <TextBlock Text="Reiniciar" FontSize="11.5" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                      <TextBlock Text="Novedades" FontSize="11.5" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
                     </StackPanel>
                   </Border>
                   <ControlTemplate.Triggers>
@@ -1347,6 +1347,7 @@ $ui.Prompt.Add_PreviewKeyDown({
     }
 })
 $ui.Prompt.Add_TextChanged({
+    $script:ultimaEscritura = Get-Date
     $ui.Placeholder.Visibility = if ($ui.Prompt.Text.Length -eq 0) { 'Visible' } else { 'Collapsed' }
 })
 
@@ -1784,6 +1785,7 @@ function Send-TasacionFC {
         @{ rol = $_.rol; texto = $_.texto; adjuntos = @(@($_.adjuntos) | Where-Object { $_ } | ForEach-Object { Split-Path $_ -Leaf }) }
     })
     $verLocal = (Get-VersionLocal).sha
+
     $cuerpo = @{
         datos = $script:tasacionDetectada
         conversacion = $mensajes
@@ -1933,11 +1935,52 @@ function Start-BuscarActualizacion {
     } catch { $script:upd = $null; Write-LogUpd ('no se pudo consultar GitHub: ' + $_.Exception.Message) }
 }
 
+# Reinicio sin que se note: se guarda lo que hay en pantalla (conversación abierta, texto escrito,
+# adjuntos, ficha elegida y posición de la ventana), la versión nueva lo recupera al arrancar y
+# esta ventana no se cierra hasta que la nueva ya se ve (o pasan 20 s).
+$ReanudarFile = Join-Path $ConfigDir 'reanudar.json'
 function Restart-Valora {
     Save-Config
+    $marca = [guid]::NewGuid().ToString('N')
+    $rb = $win.RestoreBounds
+    $estado = [ordered]@{
+        marca = $marca; fecha = (Get-Date).ToString('o')
+        conv = if ($script:conv) { $script:conv.id } else { $null }
+        texto = $ui.Prompt.Text; archivos = @($script:archivos)
+        ficha = $script:fichaPendiente
+        ventana = @{ left = $rb.Left; top = $rb.Top; width = $rb.Width; height = $rb.Height; max = ($win.WindowState -eq 'Maximized') }
+    }
+    try { $estado | ConvertTo-Json -Depth 6 | Set-Content $ReanudarFile -Encoding UTF8 } catch {}
     Start-Process powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $RutaValora)
-    $win.Close()
+    $win.IsEnabled = $false
+    Set-Estado 'Aplicando la versión nueva…' '#81C995'
+    $script:esperaRelevo = @{ archivo = (Join-Path $ConfigDir "relevo-$marca"); hasta = (Get-Date).AddSeconds(20) }
+    $timerRelevo.Start()
 }
+$timerRelevo = New-Object System.Windows.Threading.DispatcherTimer
+$timerRelevo.Interval = [TimeSpan]::FromMilliseconds(200)
+$timerRelevo.Add_Tick({
+    $e = $script:esperaRelevo
+    if ((Test-Path $e.archivo) -or (Get-Date) -gt $e.hasta) {
+        $timerRelevo.Stop()
+        try { Remove-Item $e.archivo -Force -ErrorAction SilentlyContinue } catch {}
+        $win.Close()
+    }
+})
+
+# Con una versión nueva pendiente, se aplica en cuanto Valora está tranquila: agy sin responder,
+# sin el login ni paneles abiertos y sin escribir desde hace 15 s.
+$script:ultimaEscritura = Get-Date
+$timerAplicar = New-Object System.Windows.Threading.DispatcherTimer
+$timerAplicar.Interval = [TimeSpan]::FromSeconds(2)
+$timerAplicar.Add_Tick({
+    if (-not $script:pendienteReinicio) { $timerAplicar.Stop(); return }
+    if ($script:proc -or $script:loginProc -or $ui.Login.Visibility -eq 'Visible' -or
+        $ui.PanelConfirmar.Visibility -eq 'Visible' -or $ui.PanelFC.Visibility -eq 'Visible' -or
+        ((Get-Date) - $script:ultimaEscritura).TotalSeconds -lt 15) { return }
+    $timerAplicar.Stop()
+    Restart-Valora
+})
 
 $timerUpd = New-Object System.Windows.Threading.DispatcherTimer
 $timerUpd.Interval = [TimeSpan]::FromMilliseconds(300)
@@ -1975,15 +2018,12 @@ $timerUpd.Add_Tick({
         } catch { Write-LogUpd ('no se pudo escribir la versión nueva: ' + $_.Exception.Message); return }
         Write-LogUpd "aplicada la versión $($u.sha)"
         Start-ActualizarIcono
-        # Si no se está usando, reinicia ya; si hay trabajo en marcha, avisa y espera.
-        if (-not $script:proc -and $ui.Chat.Children.Count -eq 0 -and -not $ui.Prompt.Text -and $script:archivos.Count -eq 0) {
-            Restart-Valora
-        } else {
-            $script:pendienteReinicio = $true
-            $ui.AvisoVersion.Visibility = 'Visible'
-            $ui.BtnReiniciarTitulo.Visibility = 'Visible'
-            if ($ui.TxtVersion.Text -notmatch 'reinicia') { $ui.TxtVersion.Text = $ui.TxtVersion.Text + ' · nueva lista, reinicia' }
-        }
+        # Se aplica sola en cuanto Valora esté tranquila (ver $timerAplicar). Mientras tanto,
+        # el botón junto al nombre permite aplicarla ya.
+        $script:pendienteReinicio = $true
+        $ui.BtnReiniciarTitulo.Visibility = 'Visible'
+        if ($ui.TxtVersion.Text -notmatch 'nueva') { $ui.TxtVersion.Text = $ui.TxtVersion.Text + ' · se aplica sola' }
+        $timerAplicar.Start()
     }
 })
 
@@ -2002,7 +2042,8 @@ function Start-ActualizarAgy {
 
 $ui.BtnReiniciar.Add_Click({ if (-not $script:proc) { Restart-Valora } })
 $ui.BtnReiniciarTitulo.Add_Click({
-    if ($script:proc) { Set-Estado 'Espera a que termine la respuesta para reiniciar.' '#F2C46D'; return }
+    if ($script:proc) { Set-Estado 'Se aplicará sola en cuanto termine la respuesta.' '#F2C46D'; return }
+    $timerAplicar.Stop()
     Restart-Valora
 })
 $timerRevisar = New-Object System.Windows.Threading.DispatcherTimer
@@ -2039,7 +2080,28 @@ $ui.ChkAuto.IsChecked = $cfg.auto
 Update-Adjuntos; Update-Carpetas; Update-Inicio; Update-ListaConv
 Update-Entorno; Update-BarraFicha
 $verLocal = (Get-VersionLocal).sha
+$script:relevo = $null
+if (Test-Path $ReanudarFile) {
+    try {
+        $r = Get-Content $ReanudarFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        Remove-Item $ReanudarFile -Force
+        if (((Get-Date) - [datetime]$r.fecha).TotalMinutes -lt 2) {
+            $script:relevo = $r.marca
+            $v = $r.ventana
+            if ($v -and $v.width -gt 0) {
+                $win.WindowStartupLocation = 'Manual'
+                $win.Left = $v.left; $win.Top = $v.top; $win.Width = $v.width; $win.Height = $v.height
+                if ($v.max) { $win.WindowState = 'Maximized' }
+            }
+            if ($r.conv) { Open-Conv $r.conv }
+            if ($r.ficha) { $script:fichaPendiente = $r.ficha; Update-BarraFicha }
+            Add-Rutas @($r.archivos | Where-Object { $_ })
+            if ($r.texto) { $ui.Prompt.Text = $r.texto; $ui.Prompt.CaretIndex = $ui.Prompt.Text.Length }
+        }
+    } catch {}
+}
 $ui.TxtVersion.Text = 'Versión ' + $(if ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
+if ($script:relevo) { $ui.TxtVersion.Text += ' · recién actualizada ✓'; $ui.TxtVersion.Foreground = Brush '#81C995' }
 $ui.TxtCuenta.Text = 'Comprobando…'; $ui.BtnLogout.Visibility = 'Collapsed'
 if ($script:Agy) {
     Set-Estado 'Comprobando la sesión de Google…'
@@ -2049,6 +2111,10 @@ if ($script:Agy) {
 }
 $win.Add_ContentRendered({
     $ui.Prompt.Focus() | Out-Null
+    if ($script:relevo) {
+        try { Set-Content (Join-Path $ConfigDir "relevo-$($script:relevo)") '' } catch {}
+        $win.Activate() | Out-Null
+    }
     Start-BuscarActualizacion
     Start-ActualizarIcono
     Start-ActualizarAgy
