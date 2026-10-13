@@ -1838,6 +1838,26 @@ function Get-VersionLocal {
 }
 function Save-VersionLocal($v) { $v | ConvertTo-Json | Set-Content $VersionFile -Encoding UTF8 }
 
+# Si el icono ha cambiado (lo baja el actualizador), Windows sigue enseñando el viejo
+# en los accesos directos hasta que se le avisa de que refresque su caché de iconos.
+function Update-IconoEscritorio {
+    try {
+        if (-not (Test-Path $icono)) { return }
+        $hash = (Get-FileHash $icono -Algorithm SHA256).Hash
+        $v = Get-VersionLocal
+        if ($v.icono -eq $hash) { return }
+        if (-not ('Valora.Shell' -as [type])) {
+            Add-Type -Namespace Valora -Name Shell -MemberDefinition '[DllImport("shell32.dll")] public static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);'
+        }
+        [Valora.Shell]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
+        $ie4 = Join-Path $env:WINDIR 'System32\ie4uinit.exe'
+        if (Test-Path $ie4) { Start-Process $ie4 -ArgumentList '-show' -WindowStyle Hidden }
+        $v | Add-Member -NotePropertyName icono -NotePropertyValue $hash -Force
+        Save-VersionLocal $v
+        Write-LogUpd 'icono nuevo: refrescada la caché de iconos de Windows'
+    } catch {}
+}
+
 function New-Cliente {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072
     $wc = New-Object System.Net.WebClient
@@ -1854,6 +1874,7 @@ function Write-LogUpd([string]$m) {
         Add-Content $f ('{0:yyyy-MM-dd HH:mm:ss} {1}' -f (Get-Date), $m) -Encoding UTF8
     } catch {}
 }
+Update-IconoEscritorio
 
 function Start-BuscarActualizacion {
     if ($RepoValora -eq '__REPO__' -or $script:upd) { return }

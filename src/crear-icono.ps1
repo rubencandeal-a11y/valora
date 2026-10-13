@@ -1,4 +1,4 @@
-# Genera valora.ico (256, 48, 32 y 16 px): cuadrado redondeado oscuro con una "V" blanca.
+# Genera valora.ico (256, 48, 32 y 16 px): cuadrado redondeado rojo con una "V" blanca.
 param([string]$Salida = (Join-Path $PSScriptRoot 'valora.ico'))
 Add-Type -AssemblyName System.Drawing
 
@@ -19,7 +19,7 @@ function New-Png([int]$tam) {
     $path.CloseFigure()
     $fondo = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
         (New-Object System.Drawing.Point(0, 0)), (New-Object System.Drawing.Point($tam, $tam)),
-        [System.Drawing.Color]::FromArgb(255, 46, 125, 90), [System.Drawing.Color]::FromArgb(255, 18, 60, 44))
+        [System.Drawing.Color]::FromArgb(255, 229, 57, 53), [System.Drawing.Color]::FromArgb(255, 140, 20, 20))
     $g.FillPath($fondo, $path)
 
     $fuente = New-Object System.Drawing.Font('Segoe UI', [single]($tam * 0.62), [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
