@@ -283,7 +283,7 @@ $script:pensando = $true
 
       <!-- Pantalla de inicio -->
       <StackPanel x:Name="Inicio" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="680">
-        <TextBlock Text="¿En qué trabajamos?" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+        <TextBlock Text="¿Qué tasamos hoy?" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
         <TextBlock Text="Arrastra fotos, documentos o carpetas a la ventana y pregunta." Foreground="#8E8E8E" HorizontalAlignment="Center" Margin="0,0,0,26"/>
         <UniformGrid x:Name="Sugerencias" Columns="2">
           <Button Style="{StaticResource Chip}" Margin="5" Tag="Mira las fotos adjuntas y haz un informe de tasación del inmueble: estado, superficie aproximada, calidades, desperfectos y una estimación de valor razonada.">
