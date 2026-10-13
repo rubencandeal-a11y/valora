@@ -1,6 +1,6 @@
 @echo off
 rem Publica una versión nueva de Valora en GitHub. Todos los PC con Valora la
-rem descargan solos la próxima vez que miren (al abrirse y cada 30 minutos).
+rem descargan solos la próxima vez que miren (al abrirse y cada 20 segundos).
 rem Uso: PUBLICAR.bat "qué ha cambiado"
 setlocal
 cd /d "%~dp0"

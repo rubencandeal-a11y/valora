@@ -12,7 +12,7 @@ Windows puede avisar de que el programa es de un editor desconocido: "Más infor
 
 ## Actualizaciones
 
-No hace falta volver a instalar. Valora mira este repositorio al abrirse y cada 30 minutos; si hay una versión nueva, la descarga, comprueba que es válida y se reinicia sola (o avisa si estás a mitad de algo). `agy` se actualiza una vez al día con `agy update`.
+No hace falta volver a instalar. Valora mira este repositorio al abrirse y cada 20 segundos; si hay una versión nueva, la descarga, comprueba que es válida y la aplica sola en cuanto no la estás usando, sin perder la conversación ni lo que estabas escribiendo. `agy` se actualiza una vez al día con `agy update`.
 
 Para publicar una versión nueva desde el PC de desarrollo:
 
