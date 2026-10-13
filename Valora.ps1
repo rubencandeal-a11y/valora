@@ -170,6 +170,24 @@ $script:pensando = $true
               <TextBlock Text="V" Foreground="#171717" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <TextBlock Text="Valora" FontSize="18" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+            <Button x:Name="BtnReiniciarTitulo" Margin="10,0,0,0" VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed"
+                    ToolTip="Hay una versión nueva de Valora. Pulsa para reiniciar y aplicarla.">
+              <Button.Template>
+                <ControlTemplate TargetType="Button">
+                  <Border x:Name="Fondo" Background="#2E7D5A" CornerRadius="10" Padding="8,3">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="10" Foreground="White" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                      <TextBlock Text="Reiniciar" FontSize="11.5" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Border>
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                      <Setter TargetName="Fondo" Property="Background" Value="#38976D"/>
+                    </Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Button.Template>
+            </Button>
           </StackPanel>
           <Button x:Name="BtnNueva" Style="{StaticResource Plano}">
             <StackPanel Orientation="Horizontal">
@@ -495,7 +513,7 @@ $ui = @{}
 foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpeta','ChkAuto','BtnTerminal','TxtEstado',
                'Scroll','Chat','Inicio','Sugerencias','Adjuntos','BtnAdjuntar','Prompt','Placeholder','BtnEnviar','IcoEnviar',
                'Login','LoginTexto','BtnLogin','LoginCodigo','CodigoLogin','BtnReabrir','BtnCodigo','LoginEstado','BtnLoginLuego',
-               'TxtCuenta','BtnLogout','ListaConv','AvisoVersion','BtnReiniciar','TxtVersion',
+               'TxtCuenta','BtnLogout','ListaConv','AvisoVersion','BtnReiniciar','BtnReiniciarTitulo','TxtVersion',
                'BtnFichas','InsigniaEntorno','TxtInsigniaEntorno','BarraFicha','BarraEntorno','TxtBarraEntorno','TxtBarraFicha',
                'TxtBarraEstado','BtnAbrirFicha','BtnRevisarEnviar','PanelFC','PanelEntorno','TxtPanelEntorno','BtnConexionFC',
                'BtnCerrarFC','ConexionFC','RadPRE','RadPRO','ClaveFC','BtnGuardarConexion','BuscarFC','EstadoFC','BtnBuscarFC',
@@ -1906,6 +1924,7 @@ $timerIcono.Add_Tick({
 
 function Start-BuscarActualizacion {
     if ($RepoValora -eq '__REPO__' -or $script:upd) { return }
+    $script:ultimaRevision = Get-Date
     try {
         $wc = New-Cliente
         $wc.Headers['Accept'] = 'application/vnd.github.sha'
@@ -1962,6 +1981,8 @@ $timerUpd.Add_Tick({
         } else {
             $script:pendienteReinicio = $true
             $ui.AvisoVersion.Visibility = 'Visible'
+            $ui.BtnReiniciarTitulo.Visibility = 'Visible'
+            if ($ui.TxtVersion.Text -notmatch 'reinicia') { $ui.TxtVersion.Text = $ui.TxtVersion.Text + ' · nueva lista, reinicia' }
         }
     }
 })
@@ -1980,9 +2001,17 @@ function Start-ActualizarAgy {
 }
 
 $ui.BtnReiniciar.Add_Click({ if (-not $script:proc) { Restart-Valora } })
+$ui.BtnReiniciarTitulo.Add_Click({
+    if ($script:proc) { Set-Estado 'Espera a que termine la respuesta para reiniciar.' '#F2C46D'; return }
+    Restart-Valora
+})
 $timerRevisar = New-Object System.Windows.Threading.DispatcherTimer
 $timerRevisar.Interval = [TimeSpan]::FromMinutes(30)
 $timerRevisar.Add_Tick({ Start-BuscarActualizacion })
+$script:ultimaRevision = Get-Date
+$win.Add_Activated({
+    if (((Get-Date) - $script:ultimaRevision).TotalMinutes -ge 5) { Start-BuscarActualizacion }
+})
 
 # Arrastrar y soltar en cualquier parte de la ventana (también sobre la caja de texto).
 $win.Add_PreviewDragOver({
