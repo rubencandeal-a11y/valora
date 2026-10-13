@@ -1926,11 +1926,10 @@ $timerIcono.Add_Tick({
 
 function Start-BuscarActualizacion {
     if ($RepoValora -eq '__REPO__' -or $script:upd) { return }
-    $script:ultimaRevision = Get-Date
     try {
-        $wc = New-Cliente
-        $wc.Headers['Accept'] = 'application/vnd.github.sha'
-        $script:upd = @{ paso = 'sha'; tarea = $wc.DownloadStringTaskAsync("https://api.github.com/repos/$RepoValora/commits/main") }
+        # Se lee la rama main por el protocolo de git: refleja un push al instante y no gasta el
+        # límite de consultas de la API (60 por hora y por IP), así que se puede mirar cada 20 s.
+        $script:upd = @{ paso = 'sha'; tarea = (New-Cliente).DownloadStringTaskAsync("https://github.com/$RepoValora.git/info/refs?service=git-upload-pack") }
         $timerUpd.Start()
     } catch { $script:upd = $null; Write-LogUpd ('no se pudo consultar GitHub: ' + $_.Exception.Message) }
 }
@@ -1995,7 +1994,7 @@ $timerUpd.Add_Tick({
         return
     }
     if ($u.paso -eq 'sha') {
-        $sha = $u.tarea.Result.Trim()
+        $sha = if ($u.tarea.Result -match '([0-9a-f]{40}) refs/heads/main') { $Matches[1] } else { '' }
         $local = Get-VersionLocal
         if ($sha -notmatch '^[0-9a-f]{40}$' -or $sha -eq $local.sha) { $script:upd = $null; $timerUpd.Stop(); return }
         Write-LogUpd "versión nueva $sha (local: '$($local.sha)'), descargando"
@@ -2047,41 +2046,9 @@ $ui.BtnReiniciarTitulo.Add_Click({
     Restart-Valora
 })
 $timerRevisar = New-Object System.Windows.Threading.DispatcherTimer
-$timerRevisar.Interval = [TimeSpan]::FromMinutes(30)
+$timerRevisar.Interval = [TimeSpan]::FromSeconds(20)
 $timerRevisar.Add_Tick({ Start-BuscarActualizacion })
-$script:ultimaRevision = Get-Date
-$win.Add_Activated({
-    if (((Get-Date) - $script:ultimaRevision).TotalMinutes -ge 5) { Start-BuscarActualizacion }
-})
 
-# Aviso rápido: cada publicación cambia version.txt en el repositorio. Valora lo lee cada 20 s
-# desde raw.githubusercontent.com (sin límite de consultas; el ?t= evita la caché) y, en cuanto
-# cambia, pregunta a la API de GitHub cuál es la versión nueva y se actualiza.
-$script:marcaVista = $null
-$script:tareaMarca = $null
-$timerMarca = New-Object System.Windows.Threading.DispatcherTimer
-$timerMarca.Interval = [TimeSpan]::FromSeconds(20)
-$timerMarca.Add_Tick({
-    if ($RepoValora -eq '__REPO__') { $timerMarca.Stop(); return }
-    $t = $script:tareaMarca
-    if ($t) {
-        if (-not $t.IsCompleted) { return }
-        $script:tareaMarca = $null
-        if (-not $t.IsFaulted -and -not $t.IsCanceled) {
-            $marca = $t.Result.Trim()
-            if ($marca -and $script:marcaVista -and $marca -ne $script:marcaVista) {
-                Write-LogUpd "aviso de versión nueva: $marca"
-                Start-BuscarActualizacion
-            }
-            if ($marca) { $script:marcaVista = $marca }
-        }
-    }
-    try {
-        $wc = New-Cliente
-        $wc.Headers['Cache-Control'] = 'no-cache'
-        $script:tareaMarca = $wc.DownloadStringTaskAsync("https://raw.githubusercontent.com/$RepoValora/main/version.txt?t=" + [DateTime]::UtcNow.Ticks)
-    } catch {}
-})
 
 # Arrastrar y soltar en cualquier parte de la ventana (también sobre la caja de texto).
 $win.Add_PreviewDragOver({
@@ -2148,6 +2115,5 @@ $win.Add_ContentRendered({
     Start-ActualizarIcono
     Start-ActualizarAgy
     $timerRevisar.Start()
-    $timerMarca.Start()
 })
 [void]$win.ShowDialog()
