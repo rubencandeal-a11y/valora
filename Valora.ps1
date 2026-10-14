@@ -501,19 +501,13 @@ $script:pensando = $true
             </Grid>
             <TextBlock x:Name="TxtYTCredEstado" TextWrapping="Wrap" FontSize="13" Margin="0,0,0,10"/>
 
-            <TextBlock Text="1. Credenciales de la API de YouTube (se hace una sola vez, con cualquier cuenta de Google)" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
-            <WrapPanel Margin="0,0,0,4">
-              <Button x:Name="BtnYTPaso1" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="10,5" Margin="0,0,6,6" FontSize="12.5"
-                      Tag="https://console.cloud.google.com/projectcreate" Content="a) Crear proyecto"/>
-              <Button x:Name="BtnYTPaso2" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="10,5" Margin="0,0,6,6" FontSize="12.5"
-                      Tag="https://console.cloud.google.com/apis/library/youtube.googleapis.com" Content="b) Activar YouTube Data API v3"/>
-              <Button x:Name="BtnYTPaso3" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="10,5" Margin="0,0,6,6" FontSize="12.5"
-                      Tag="https://console.cloud.google.com/auth/overview" Content="c) Pantalla de consentimiento"/>
-              <Button x:Name="BtnYTPaso4" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="10,5" Margin="0,0,6,6" FontSize="12.5"
-                      Tag="https://console.cloud.google.com/auth/clients/create" Content="d) Crear credencial"/>
-            </WrapPanel>
-            <TextBlock TextWrapping="Wrap" Foreground="#B4B4B4" FontSize="12.5" LineHeight="19" Margin="0,0,0,8"
-                       Text="En c) elige «Externo» y publícala «En producción» (si se queda en pruebas, el permiso caduca a los 7 días). En d) el tipo es «TV y dispositivos de entrada limitada». Google te da un Client ID y un Client secret: pégalos aquí."/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+              <Button x:Name="BtnYTPaso4" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="12,6" FontSize="13"
+                      Tag="https://console.cloud.google.com/apis/credentials" Content="1. Coger Client ID y secret en Google Cloud ↗"/>
+              <Button x:Name="BtnYTPaso2" Style="{StaticResource Plano}" Foreground="#8E8E8E" Padding="8,6" FontSize="12" Margin="6,0,0,0"
+                      Tag="https://console.cloud.google.com/apis/library/youtube.googleapis.com" Content="¿API sin activar?"
+                      ToolTip="Activa YouTube Data API v3 en el proyecto (solo la primera vez)"/>
+            </StackPanel>
             <Grid Margin="0,0,0,4">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*"/>
@@ -537,13 +531,8 @@ $script:pensando = $true
                       Padding="14,7" FontWeight="SemiBold" VerticalAlignment="Bottom" Content="Guardar en el servidor"/>
             </Grid>
 
-            <TextBlock Text="2. Entrar con la cuenta de Google dueña del canal" FontWeight="SemiBold" FontSize="13" Margin="0,12,0,6"/>
-            <StackPanel Orientation="Horizontal">
-              <Button x:Name="BtnYTLoginGoogle" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="14,7"
-                      FontWeight="SemiBold" Content="Conectar con Google"/>
-              <TextBlock Text="Sale un código: se mete en google.com/device con la cuenta del canal y se acepta." Foreground="#B4B4B4"
-                         FontSize="12.5" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
-            </StackPanel>
+            <Button x:Name="BtnYTLoginGoogle" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="14,7"
+                    FontWeight="SemiBold" Margin="0,12,0,0" HorizontalAlignment="Left" Content="2. Conectar con la cuenta del canal"/>
           </StackPanel>
         </Border>
 
@@ -801,7 +790,7 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'TxtYTServidorEstado','YTAviso','TxtYTAviso','YTCodigoCaja','TxtYTCodigo','BtnYTCopiar','BtnYTAbrirGoogle',
                'YTBuscar','YTBuscarPista','YTPlaylist','YTTipo','YTEstado','TxtYTSel','BtnYTTodos','BtnYTNinguno',
                'YTPrivacidad','BtnYTResubir','YTLista','TxtYTCola','YTCola','LateralArriba','LateralMedio','LateralAbajo',
-               'YTCred','BtnYTCredCerrar','TxtYTCredEstado','BtnYTPaso1','BtnYTPaso2','BtnYTPaso3','BtnYTPaso4','YTClientId',
+               'YTCred','BtnYTCredCerrar','TxtYTCredEstado','BtnYTPaso2','BtnYTPaso4','YTClientId',
                'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
                'Lateral','LogoFondo','LogoLetra','LogoTexto') {
     $ui[$n] = $win.FindName($n)
@@ -2381,11 +2370,10 @@ function Set-ChipServidorYT([bool]$ok, [string]$err = '') {
 function Update-CredYT($e) {
     if (-not $e) { $ui.TxtYTCredEstado.Text = ''; return }
     if ($e.credenciales) {
-        $ui.TxtYTCredEstado.Text = "Credenciales de la API guardadas en el servidor ($($e.client_id)). Ya se puede hacer el paso 2. " +
-            'Si quieres cambiarlas por las de otro proyecto, pega las nuevas en el paso 1.'
+        $ui.TxtYTCredEstado.Text = "Credenciales guardadas ($($e.client_id)). Falta el paso 2."
         $ui.TxtYTCredEstado.Foreground = Brush '#81C995'
     } else {
-        $ui.TxtYTCredEstado.Text = 'El servidor todavía no tiene credenciales de la API de YouTube: sin ellas no se puede subir nada. Haz el paso 1.'
+        $ui.TxtYTCredEstado.Text = 'Faltan las credenciales de la API (paso 1).'
         $ui.TxtYTCredEstado.Foreground = Brush '#F2C46D'
     }
 }
@@ -2411,7 +2399,7 @@ function Save-CredYT {
             $ui.TxtYTCredEstado.Text = "No se han guardado: $err"; $ui.TxtYTCredEstado.Foreground = Brush '#F28B82'; return
         }
         $ui.YTClientId.Text = ''; $ui.YTClientSecret.Password = ''
-        $ui.TxtYTCredEstado.Text = "Guardadas en el servidor ($($res.client_id)). Ahora el paso 2: «Conectar con Google»."
+        $ui.TxtYTCredEstado.Text = "Guardadas ($($res.client_id)). Ahora el paso 2."
         $ui.TxtYTCredEstado.Foreground = Brush '#81C995'
         Get-EstadoYT
     }
@@ -2445,14 +2433,14 @@ function Update-EstadoYT($e) {
         $ui.BtnYTAbrirGoogle.Tag = $e.url_verificacion
         $ui.YTCodigoCaja.Visibility = 'Visible'
         $ui.YTAviso.Visibility = 'Visible'
-    } elseif ($e.error_conexion -and -not $e.youtube_conectado) {
+    } elseif ($e.error_conexion -and -not $e.youtube_conectado -and $ui.YTCred.Visibility -ne 'Visible') {
         $ui.TxtYTAviso.Text = if ($e.credenciales) { "No se ha podido conectar con YouTube: $($e.error_conexion)" } else {
-            'Faltan las credenciales de la API de YouTube. Pulsa «Conectar YouTube» para ponerlas.' }
+            'Faltan las credenciales de la API: pulsa «Conectar YouTube».' }
         $ui.TxtYTAviso.Foreground = Brush '#F28B82'
         $ui.YTCodigoCaja.Visibility = 'Collapsed'
         $ui.YTAviso.Visibility = 'Visible'
     } elseif (-not $e.credenciales -and $ui.YTCred.Visibility -ne 'Visible') {
-        $ui.TxtYTAviso.Text = 'Faltan las credenciales de la API de YouTube: sin ellas no se puede subir nada. Pulsa «Conectar YouTube» para ponerlas.'
+        $ui.TxtYTAviso.Text = 'Faltan las credenciales de la API: pulsa «Conectar YouTube».'
         $ui.TxtYTAviso.Foreground = Brush '#F2C46D'
         $ui.YTCodigoCaja.Visibility = 'Collapsed'
         $ui.YTAviso.Visibility = 'Visible'
@@ -2571,9 +2559,11 @@ $ui.BtnYTConectar.Add_Click({
     if ($ui.YTCred.Visibility -eq 'Visible') { $ui.YTCred.Visibility = 'Collapsed'; return }
     Update-CredYT $script:ytEstado
     $ui.YTCred.Visibility = 'Visible'
+    # Sin credenciales, se abre directamente la página de Google Cloud donde están.
+    if (-not ($script:ytEstado -and $script:ytEstado.credenciales)) { Start-Process ([string]$ui.BtnYTPaso4.Tag) }
 })
 $ui.BtnYTCredCerrar.Add_Click({ $ui.YTCred.Visibility = 'Collapsed' })
-foreach ($n in 'BtnYTPaso1', 'BtnYTPaso2', 'BtnYTPaso3', 'BtnYTPaso4') { $ui[$n].Add_Click({ Start-Process ([string]$this.Tag) }) }
+foreach ($n in 'BtnYTPaso2', 'BtnYTPaso4') { $ui[$n].Add_Click({ Start-Process ([string]$this.Tag) }) }
 $ui.BtnYTGuardarCred.Add_Click({ Save-CredYT })
 $ui.BtnYTLoginGoogle.Add_Click({
     $ui.BtnYTLoginGoogle.IsEnabled = $false
