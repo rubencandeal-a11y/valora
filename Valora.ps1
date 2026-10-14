@@ -835,6 +835,251 @@ function New-TextoLectura([string]$texto, [string]$color) {
     return $t
 }
 
+# ---------- Respuestas con formato, como en la web de Gemini ----------
+# agy contesta en Markdown. Se pinta en un FlowDocument: títulos, negritas, cursivas, listas,
+# tablas, citas, enlaces y bloques de código con botón de copiar. Todo se puede seleccionar.
+$PatronInlineMd = '(\*\*(?<b>.+?)\*\*|__(?<b2>.+?)__|`(?<c>[^`]+)`|\[(?<lt>[^\]]+)\]\((?<lu>[^)\s]+)\)|' +
+    '(?<url>https?://[^\s<>()]+[^\s<>().,;:!?])|~~(?<s>.+?)~~|' +
+    '(?<![\w*])\*(?<i>[^*\s](?:[^*]*?[^*\s])?)\*(?![\w*])|(?<![\w_])_(?<i2>[^_\s](?:[^_]*?[^_\s])?)_(?![\w_]))'
+
+function Add-InlinesMd($destino, [string]$texto) {
+    $pos = 0
+    foreach ($m in [regex]::Matches($texto, $PatronInlineMd)) {
+        if ($m.Index -gt $pos) { $destino.Add((New-Object System.Windows.Documents.Run($texto.Substring($pos, $m.Index - $pos)))) }
+        $g = $m.Groups
+        if ($g['b'].Success -or $g['b2'].Success) {
+            $x = New-Object System.Windows.Documents.Bold
+            Add-InlinesMd $x.Inlines $(if ($g['b'].Success) { $g['b'].Value } else { $g['b2'].Value })
+            $destino.Add($x)
+        } elseif ($g['i'].Success -or $g['i2'].Success) {
+            $x = New-Object System.Windows.Documents.Italic
+            Add-InlinesMd $x.Inlines $(if ($g['i'].Success) { $g['i'].Value } else { $g['i2'].Value })
+            $destino.Add($x)
+        } elseif ($g['s'].Success) {
+            $x = New-Object System.Windows.Documents.Span
+            $x.TextDecorations = [System.Windows.TextDecorations]::Strikethrough
+            Add-InlinesMd $x.Inlines $g['s'].Value
+            $destino.Add($x)
+        } elseif ($g['c'].Success) {
+            $r = New-Object System.Windows.Documents.Run(' ' + $g['c'].Value + ' ')
+            $r.FontFamily = 'Consolas'; $r.Background = Brush '#2F2F2F'; $r.Foreground = Brush '#F0C987'
+            $destino.Add($r)
+        } else {
+            $url = if ($g['lu'].Success) { $g['lu'].Value } else { $g['url'].Value }
+            $h = New-Object System.Windows.Documents.Hyperlink
+            [void]$h.Inlines.Add((New-Object System.Windows.Documents.Run($(if ($g['lt'].Success) { $g['lt'].Value } else { $url }))))
+            $h.Foreground = Brush '#8AB4F8'; $h.ToolTip = $url; $h.Tag = $url; $h.Cursor = 'Hand'
+            $h.Add_Click({ try { Start-Process ([string]$this.Tag) } catch {} })
+            $destino.Add($h)
+        }
+        $pos = $m.Index + $m.Length
+    }
+    if ($pos -lt $texto.Length) { $destino.Add((New-Object System.Windows.Documents.Run($texto.Substring($pos)))) }
+}
+
+function New-ParrafoMd([string]$texto, [double]$tam = 15, [bool]$negrita = $false, [string]$margen = '0,0,0,12') {
+    $p = New-Object System.Windows.Documents.Paragraph
+    $p.Margin = $margen; $p.FontSize = $tam
+    if ($negrita) { $p.FontWeight = 'SemiBold' }
+    $lineas = $texto -split "`n"
+    for ($k = 0; $k -lt $lineas.Count; $k++) {
+        Add-InlinesMd $p.Inlines $lineas[$k]
+        if ($k -lt $lineas.Count - 1) { $p.Inlines.Add((New-Object System.Windows.Documents.LineBreak)) }
+    }
+    return $p
+}
+
+# La rueda del ratón sobre una respuesta mueve la conversación, no se queda en la respuesta.
+$PasarRueda = { $ui.Scroll.ScrollToVerticalOffset($ui.Scroll.VerticalOffset - $_.Delta); $_.Handled = $true }
+
+function New-CodigoMd([string]$codigo, [string]$lenguaje) {
+    $b = New-Object System.Windows.Controls.Border
+    $b.Background = Brush '#171717'; $b.CornerRadius = 10; $b.BorderBrush = Brush '#333333'; $b.BorderThickness = 1
+    $b.Margin = '0,2,0,12'
+    $pila = New-Object System.Windows.Controls.DockPanel
+    $cab = New-Object System.Windows.Controls.Border
+    $cab.Background = Brush '#232323'; $cab.CornerRadius = '10,10,0,0'; $cab.Padding = '12,2,4,2'
+    [System.Windows.Controls.DockPanel]::SetDock($cab, 'Top')
+    $g = New-Object System.Windows.Controls.DockPanel
+    $copiar = New-Object System.Windows.Controls.Button
+    $copiar.Style = $win.FindResource('Plano'); $copiar.Padding = '8,3'; $copiar.FontSize = 12; $copiar.Foreground = Brush '#B4B4B4'
+    $copiar.Content = 'Copiar'; $copiar.Tag = $codigo
+    $copiar.Add_Click({ [System.Windows.Clipboard]::SetText([string]$this.Tag); $this.Content = 'Copiado ✓' })
+    [System.Windows.Controls.DockPanel]::SetDock($copiar, 'Right')
+    $leng = New-Object System.Windows.Controls.TextBlock
+    $leng.Text = if ($lenguaje) { $lenguaje } else { 'código' }; $leng.Foreground = Brush '#8E8E8E'; $leng.FontSize = 12
+    $leng.VerticalAlignment = 'Center'
+    [void]$g.Children.Add($copiar); [void]$g.Children.Add($leng)
+    $cab.Child = $g
+    $t = New-Object System.Windows.Controls.TextBox
+    $t.Text = $codigo; $t.IsReadOnly = $true; $t.FontFamily = 'Consolas'; $t.FontSize = 13.5
+    $t.Foreground = Brush '#E6E6E6'; $t.Background = Brush '#00000000'; $t.BorderThickness = 0; $t.Padding = '12,10'
+    $t.TextWrapping = 'NoWrap'; $t.HorizontalScrollBarVisibility = 'Auto'; $t.VerticalScrollBarVisibility = 'Disabled'
+    $t.Add_PreviewMouseWheel($PasarRueda)
+    [void]$pila.Children.Add($cab); [void]$pila.Children.Add($t)
+    $b.Child = $pila
+    return (New-Object System.Windows.Documents.BlockUIContainer($b))
+}
+
+function Split-FilaMd([string]$linea) {
+    $l = $linea.Trim()
+    if ($l.StartsWith('|')) { $l = $l.Substring(1) }
+    if ($l.EndsWith('|')) { $l = $l.Substring(0, $l.Length - 1) }
+    return @($l -split '(?<!\\)\|' | ForEach-Object { $_.Trim() -replace '\\\|', '|' })
+}
+
+function New-TablaMd($filas) {
+    $t = New-Object System.Windows.Documents.Table
+    $t.CellSpacing = 0; $t.Margin = '0,2,0,14'; $t.BorderBrush = Brush '#3A3A3A'; $t.BorderThickness = '1,1,0,0'
+    $n = ($filas | ForEach-Object { $_.Count } | Measure-Object -Maximum).Maximum
+    for ($c = 0; $c -lt $n; $c++) { $t.Columns.Add((New-Object System.Windows.Documents.TableColumn)) }
+    $grupo = New-Object System.Windows.Documents.TableRowGroup
+    $t.RowGroups.Add($grupo)
+    for ($f = 0; $f -lt $filas.Count; $f++) {
+        $fila = New-Object System.Windows.Documents.TableRow
+        if ($f -eq 0) { $fila.Background = Brush '#2A2A2A'; $fila.FontWeight = 'SemiBold' }
+        for ($c = 0; $c -lt $n; $c++) {
+            $celda = New-Object System.Windows.Documents.TableCell
+            $celda.BorderBrush = Brush '#3A3A3A'; $celda.BorderThickness = '0,0,1,1'; $celda.Padding = '8,4'
+            $p = New-Object System.Windows.Documents.Paragraph
+            $p.Margin = '0'; $p.FontSize = 14
+            $texto = if ($c -lt $filas[$f].Count) { $filas[$f][$c] } else { '' }
+            Add-InlinesMd $p.Inlines $texto
+            $celda.Blocks.Add($p)
+            $fila.Cells.Add($celda)
+        }
+        $grupo.Rows.Add($fila)
+    }
+    return $t
+}
+
+function New-ListaMd($items) {
+    $raiz = $null
+    $pila = New-Object System.Collections.ArrayList
+    foreach ($it in $items) {
+        while ($pila.Count -and $it.indent -lt $pila[$pila.Count - 1].indent) { $pila.RemoveAt($pila.Count - 1) }
+        if (-not $pila.Count -or $it.indent -gt $pila[$pila.Count - 1].indent) {
+            $lista = New-Object System.Windows.Documents.List
+            $lista.MarkerStyle = if ($it.ordenada) { 'Decimal' } else { 'Disc' }
+            $lista.Margin = '0,0,0,10'; $lista.Padding = '24,0,0,0'
+            if ($it.ordenada -and $it.numero -gt 1) { $lista.StartIndex = $it.numero }
+            $padre = if ($pila.Count) { $pila[$pila.Count - 1].lista.ListItems.LastListItem } else { $null }
+            if ($padre) { $lista.Margin = '0,2,0,2'; $padre.Blocks.Add($lista) } elseif (-not $raiz) { $raiz = $lista }
+            [void]$pila.Add(@{ indent = $it.indent; lista = $lista })
+        }
+        $li = New-Object System.Windows.Documents.ListItem
+        $li.Blocks.Add((New-ParrafoMd $it.texto 15 $false '0,0,0,4'))
+        $pila[$pila.Count - 1].lista.ListItems.Add($li)
+    }
+    return $raiz
+}
+
+function ConvertTo-DocumentoMd([string]$md) {
+    $doc = New-Object System.Windows.Documents.FlowDocument
+    $doc.PagePadding = '0'; $doc.FontFamily = 'Segoe UI'; $doc.FontSize = 15; $doc.Foreground = Brush '#ECECEC'
+    $doc.LineHeight = 24
+    $lineas = ($md -replace "`r", '') -split "`n"
+    $parrafo = New-Object 'System.Collections.Generic.List[string]'
+    $i = 0
+    while ($i -lt $lineas.Count) {
+        $l = $lineas[$i]
+        $esBloque = ($l -match '^\s*$') -or ($l -match '^\s*```') -or ($l -match '^#{1,6}\s') -or ($l -match '^\s*([-*_])(\s*\1){2,}\s*$') -or
+            ($l -match '^\s*>') -or ($l -match '^\s*([-*+]|\d+[.)])\s+\S') -or
+            ($l -match '^\s*\|' -and $i + 1 -lt $lineas.Count -and $lineas[$i + 1] -match '^\s*\|?\s*:?-{2,}')
+        if (-not $esBloque) { $parrafo.Add($l.Trim()); $i++; continue }
+        if ($parrafo.Count) { $doc.Blocks.Add((New-ParrafoMd ($parrafo -join "`n"))); $parrafo.Clear() }
+
+        if ($l -match '^\s*$') { $i++; continue }
+        if ($l -match '^\s*```\s*([^\s`]*)') {
+            $leng = $Matches[1]; $codigo = New-Object 'System.Collections.Generic.List[string]'; $i++
+            while ($i -lt $lineas.Count -and $lineas[$i] -notmatch '^\s*```\s*$') { $codigo.Add($lineas[$i]); $i++ }
+            $i++
+            $doc.Blocks.Add((New-CodigoMd ($codigo -join "`n") $leng))
+            continue
+        }
+        if ($l -match '^(#{1,6})\s+(.*?)\s*#*\s*$') {
+            $tam = @(15, 23, 20, 17.5, 16, 15, 15)[$Matches[1].Length]
+            $doc.Blocks.Add((New-ParrafoMd $Matches[2] $tam $true '0,10,0,8'))
+            $i++; continue
+        }
+        if ($l -match '^\s*([-*_])(\s*\1){2,}\s*$') {
+            $sep = New-Object System.Windows.Controls.Border
+            $sep.Height = 1; $sep.Background = Brush '#3A3A3A'; $sep.Margin = '0,6,0,6'
+            $doc.Blocks.Add((New-Object System.Windows.Documents.BlockUIContainer($sep)))
+            $i++; continue
+        }
+        if ($l -match '^\s*>') {
+            $cita = New-Object 'System.Collections.Generic.List[string]'
+            while ($i -lt $lineas.Count -and $lineas[$i] -match '^\s*>\s?(.*)$') { $cita.Add($Matches[1]); $i++ }
+            $sec = New-Object System.Windows.Documents.Section
+            $sec.BorderBrush = Brush '#5A5A5A'; $sec.BorderThickness = '3,0,0,0'; $sec.Padding = '12,0,0,0'
+            $sec.Margin = '0,0,0,12'; $sec.Foreground = Brush '#B4B4B4'
+            $sec.Blocks.Add((New-ParrafoMd ($cita -join "`n") 15 $false '0'))
+            $doc.Blocks.Add($sec)
+            continue
+        }
+        if ($l -match '^\s*\|') {
+            $filas = New-Object System.Collections.ArrayList
+            [void]$filas.Add((Split-FilaMd $l)); $i += 2
+            while ($i -lt $lineas.Count -and $lineas[$i] -match '^\s*\|') { [void]$filas.Add((Split-FilaMd $lineas[$i])); $i++ }
+            $doc.Blocks.Add((New-TablaMd $filas))
+            continue
+        }
+        # Lista: sigue mientras haya elementos, líneas que continúan el anterior o huecos entre ellos.
+        $items = New-Object System.Collections.ArrayList
+        while ($i -lt $lineas.Count) {
+            $x = $lineas[$i]
+            if ($x -match '^(\s*)([-*+]|\d+[.)])\s+(.*)$') {
+                # Se copian los grupos antes de nada: otro -match pisaría $Matches.
+                $sangria = $Matches[1]; $marca = $Matches[2]; $resto = $Matches[3]
+                $ordenada = $marca -match '\d'
+                # Una lista numerada justo después de una de puntos (o al revés) es otra lista.
+                if ($items.Count -and $sangria.Length -le $items[0].indent -and $ordenada -ne $items[0].ordenada) { break }
+                [void]$items.Add(@{ indent = $sangria.Replace("`t", '    ').Length; ordenada = $ordenada
+                    numero = $(if ($ordenada) { [int]($marca -replace '\D', '') } else { 0 }); texto = $resto })
+                $i++
+            } elseif ($x -match '^\s{2,}\S' -and $items.Count) {
+                $items[$items.Count - 1].texto += "`n" + $x.Trim(); $i++
+            } elseif ($x -match '^\s*$' -and $i + 1 -lt $lineas.Count -and $lineas[$i + 1] -match '^\s*([-*+]|\d+[.)])\s+\S') {
+                $i++
+            } else { break }
+        }
+        $lista = New-ListaMd $items
+        if ($lista) { $doc.Blocks.Add($lista) }
+    }
+    if ($parrafo.Count) { $doc.Blocks.Add((New-ParrafoMd ($parrafo -join "`n"))) }
+    # Sin margen al final, para que la respuesta no deje hueco debajo.
+    if ($doc.Blocks.LastBlock) { $doc.Blocks.LastBlock.Margin = New-Object System.Windows.Thickness(0) }
+    return $doc
+}
+
+# Pinta en la caja de la respuesta el texto con formato (o tal cual, si es un aviso de otro color).
+function Show-Respuesta {
+    $r = $script:respuesta
+    if (-not $r) { return }
+    $r.Pintado = Get-Date
+    if ($r.Color -ne '#ECECEC') {
+        $r.Caja.Content = New-TextoLectura $r.Text $r.Color
+        return
+    }
+    try { $doc = ConvertTo-DocumentoMd $r.Text } catch { $r.Caja.Content = New-TextoLectura $r.Text $r.Color; return }
+    $rtb = $r.Caja.Content
+    if ($rtb -isnot [System.Windows.Controls.RichTextBox]) {
+        $rtb = New-Object System.Windows.Controls.RichTextBox
+        $rtb.IsReadOnly = $true; $rtb.IsDocumentEnabled = $true; $rtb.BorderThickness = 0
+        $rtb.Background = Brush '#00000000'; $rtb.Foreground = Brush '#ECECEC'; $rtb.Padding = '0'
+        $rtb.VerticalScrollBarVisibility = 'Disabled'
+        $rtb.Add_PreviewMouseWheel($PasarRueda)
+        $r.Caja.Content = $rtb
+    }
+    $rtb.Document = $doc
+}
+
+# Mientras agy escribe, se repinta como mucho cada 250 ms; este temporizador pinta lo último.
+$timerPintar = New-Object System.Windows.Threading.DispatcherTimer
+$timerPintar.Interval = [TimeSpan]::FromMilliseconds(250)
+$timerPintar.Add_Tick({ $timerPintar.Stop(); Show-Respuesta; $ui.Scroll.ScrollToEnd() })
+
 function Add-MensajeUsuario([string]$texto, $adjuntos) {
     $pila = New-Object System.Windows.Controls.StackPanel
     $pila.HorizontalAlignment = 'Right'; $pila.Margin = '80,10,0,10'
@@ -865,12 +1110,14 @@ function Add-MensajeAgy {
     $l = New-Object System.Windows.Controls.TextBlock
     $l.Text = 'V'; $l.FontWeight = 'Bold'; $l.HorizontalAlignment = 'Center'; $l.VerticalAlignment = 'Center'
     $av.Child = $l
-    $t = New-TextoLectura 'Pensando…' '#8E8E8E'
-    [System.Windows.Controls.Grid]::SetColumn($t, 1)
-    [void]$g.Children.Add($av); [void]$g.Children.Add($t)
+    $caja = New-Object System.Windows.Controls.ContentControl
+    $caja.Content = New-TextoLectura 'Pensando…' '#8E8E8E'
+    [System.Windows.Controls.Grid]::SetColumn($caja, 1)
+    [void]$g.Children.Add($av); [void]$g.Children.Add($caja)
     [void]$ui.Chat.Children.Add($g)
     Update-Inicio
-    $script:respuesta = $t
+    # Text es el Markdown tal como llega de agy; Caja enseña su versión con formato.
+    $script:respuesta = [pscustomobject]@{ Caja = $caja; Text = ''; Color = '#ECECEC'; Pintado = [datetime]::MinValue }
     $script:pensando = $true
 }
 
@@ -888,7 +1135,7 @@ function Format-TextoVisible([string]$texto) {
 function Add-MensajeAgyTexto([string]$texto) {
     Add-MensajeAgy
     $script:respuesta.Text = $texto
-    $script:respuesta.Foreground = Brush '#ECECEC'
+    Show-Respuesta
     $script:pensando = $false
     $script:respuesta = $null
 }
@@ -991,10 +1238,11 @@ function Write-Respuesta([string]$texto, [string]$color = '#ECECEC') {
     if (-not $script:respuesta) { return }
     if ($script:pensando) {
         $script:respuesta.Text = ''
-        $script:respuesta.Foreground = Brush $color
+        $script:respuesta.Color = $color
         $script:pensando = $false
     }
-    $script:respuesta.AppendText($texto)
+    $script:respuesta.Text += $texto
+    if (((Get-Date) - $script:respuesta.Pintado).TotalMilliseconds -ge 250) { $timerPintar.Stop(); Show-Respuesta } else { $timerPintar.Start() }
     $ui.Scroll.ScrollToEnd()
 }
 
@@ -1493,6 +1741,7 @@ $timer.Add_Tick({
         if ($script:respuesta) {
             $completo = $script:respuesta.Text.TrimEnd()
             $script:respuesta.Text = Format-TextoVisible $completo
+            $timerPintar.Stop(); Show-Respuesta
             if ($script:conv -and -not $script:avisoLogin) {
                 $script:conv.mensajes = @($script:conv.mensajes) + @([pscustomobject]@{ rol = 'agy'; texto = $completo; adjuntos = @() })
                 Save-Conv
@@ -1635,6 +1884,31 @@ $ui.BtnNueva.Add_Click({
     New-ConvVacia
     Set-Estado 'Conversación nueva. La anterior queda guardada en la lista.'
     $ui.Prompt.Focus() | Out-Null
+})
+
+# Ctrl+V en la caja de mensaje: una imagen (un recorte de la herramienta Recortes, una captura)
+# se guarda como PNG y se adjunta; archivos copiados en el Explorador se adjuntan tal cual.
+# Si lo copiado es texto, se pega como siempre.
+$PegadosDir = Join-Path $ConfigDir 'pegados'
+$ui.Prompt.Add_PreviewKeyDown({
+    if ($_.Key -ne 'V' -or -not ([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Control)) { return }
+    try {
+        if ([System.Windows.Clipboard]::ContainsFileDropList()) {
+            Add-Rutas @([System.Windows.Clipboard]::GetFileDropList())
+            Set-Estado 'Archivos pegados como adjuntos.' '#81C995'
+            $_.Handled = $true
+        } elseif ([System.Windows.Clipboard]::ContainsImage()) {
+            New-Item -ItemType Directory -Force $PegadosDir | Out-Null
+            $ruta = Join-Path $PegadosDir ('recorte-{0:yyyyMMdd-HHmmss}.png' -f (Get-Date))
+            $png = New-Object System.Windows.Media.Imaging.PngBitmapEncoder
+            $png.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create([System.Windows.Clipboard]::GetImage()))
+            $fs = [IO.File]::Create($ruta)
+            try { $png.Save($fs) } finally { $fs.Dispose() }
+            Add-Rutas @($ruta)
+            Set-Estado 'Imagen pegada como adjunto.' '#81C995'
+            $_.Handled = $true
+        }
+    } catch { Set-Estado ('No se ha podido pegar: ' + $_.Exception.Message) '#F28B82' }
 })
 
 $ui.BtnAdjuntar.Add_Click({
