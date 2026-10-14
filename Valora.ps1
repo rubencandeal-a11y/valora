@@ -2750,7 +2750,7 @@ $timerAplicar.Add_Tick({
     if (-not $script:pendienteReinicio) { $timerAplicar.Stop(); return }
     if ($script:proc -or $script:loginProc -or $ui.Login.Visibility -eq 'Visible' -or
         $ui.PanelConfirmar.Visibility -eq 'Visible' -or $ui.PanelFC.Visibility -eq 'Visible' -or
-        $script:ytSel.Count -gt 0 -or $ui.YTAviso.Visibility -eq 'Visible' -or $ui.YTClave.Password -or $ui.YTCred.Visibility -eq 'Visible' -or
+        $script:ytSel.Count -gt 0 -or ($ui.YTAviso.Visibility -eq 'Visible' -and $ui.YTCodigoCaja.Visibility -eq 'Visible') -or $ui.YTClave.Password -or $ui.YTCred.Visibility -eq 'Visible' -or
         ((Get-Date) - $script:ultimaEscritura).TotalSeconds -lt 15) { return }
     $timerAplicar.Stop()
     Restart-Valora
