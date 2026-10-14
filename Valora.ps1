@@ -88,6 +88,8 @@ $ConvDir = Join-Path $ConfigDir 'conversaciones'
 New-Item -ItemType Directory -Force $ConvDir | Out-Null
 $script:respuesta = $null
 $script:pensando = $true
+$script:convTrabajo = $null       # conversación a la que pertenece la respuesta en curso
+$script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerla al abrir esa conversación
 
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -1133,19 +1135,21 @@ function Format-TextoVisible([string]$texto) {
 }
 
 function Add-MensajeAgyTexto([string]$texto) {
+    # Pinta un mensaje guardado sin tocar la respuesta que pueda estar llegando de agy.
+    $enCurso = $script:respuesta; $pensaba = $script:pensando
     Add-MensajeAgy
     $script:respuesta.Text = $texto
     Show-Respuesta
-    $script:pensando = $false
-    $script:respuesta = $null
+    $script:respuesta = $enCurso; $script:pensando = $pensaba
 }
 
 # ---------- Historial de conversaciones ----------
-function Save-Conv {
-    if (-not $script:conv) { return }
-    $script:conv.actualizada = (Get-Date).ToString('o')
-    $ruta = Join-Path $ConvDir ($script:conv.id + '.json')
-    $script:conv | ConvertTo-Json -Depth 6 | Set-Content $ruta -Encoding UTF8
+function Save-Conv { Save-ConvObj $script:conv }
+function Save-ConvObj($c) {
+    if (-not $c) { return }
+    $c.actualizada = (Get-Date).ToString('o')
+    $ruta = Join-Path $ConvDir ($c.id + '.json')
+    $c | ConvertTo-Json -Depth 6 | Set-Content $ruta -Encoding UTF8
 }
 
 function Get-Convs {
@@ -1172,6 +1176,7 @@ function Update-ListaConv {
         $t.Text = $c.titulo; $t.TextTrimming = 'CharacterEllipsis'; $t.Margin = '0,0,22,0'; $t.FontSize = 13.5
         $f = New-Object System.Windows.Controls.TextBlock
         $f.Text = ([datetime]$c.actualizada).ToString('dd/MM/yyyy HH:mm'); $f.Foreground = Brush '#7A7A7A'; $f.FontSize = 11
+        if ($script:proc -and $script:convTrabajo -and $script:convTrabajo.id -eq $c.id) { $f.Text = 'Respondiendo…'; $f.Foreground = Brush '#E8A33D' }
         [void]$sp.Children.Add($t); [void]$sp.Children.Add($f)
         $btn.Content = $sp
         $btn.ToolTip = $c.titulo
@@ -1190,23 +1195,28 @@ function Update-ListaConv {
 function New-ConvVacia {
     $script:conv = $null
     $ui.Chat.Children.Clear()
+    Update-BotonEnviar
     Update-Inicio
     Update-ListaConv
     if (Get-Command Update-BarraFicha -ErrorAction SilentlyContinue) { Update-BarraFicha }
 }
 
 function Open-Conv([string]$id) {
-    if ($script:proc) { return }
     $ruta = Join-Path $ConvDir ($id + '.json')
     if (-not (Test-Path $ruta)) { Update-ListaConv; return }
-    $c = Get-Content $ruta -Raw -Encoding UTF8 | ConvertFrom-Json
-    $c.mensajes = @($c.mensajes)
+    $enCurso = $script:proc -and $script:convTrabajo -and $script:convTrabajo.id -eq $id
+    if ($enCurso) { $c = $script:convTrabajo } else {
+        $c = Get-Content $ruta -Raw -Encoding UTF8 | ConvertFrom-Json
+        $c.mensajes = @($c.mensajes)
+    }
     $script:conv = $c
     $ui.Chat.Children.Clear()
     foreach ($m in $c.mensajes) {
         if ($m.rol -eq 'usuario') { Add-MensajeUsuario $m.texto @($m.adjuntos | Where-Object { $_ }) }
         else { Add-MensajeAgyTexto (Format-TextoVisible $m.texto) }
     }
+    if ($enCurso -and $script:filaTrabajo) { [void]$ui.Chat.Children.Add($script:filaTrabajo) }
+    Update-BotonEnviar
     Update-Inicio
     Update-ListaConv
     Update-BarraFicha
@@ -1216,6 +1226,7 @@ function Open-Conv([string]$id) {
 }
 
 function Remove-Conv([string]$id) {
+    if ($script:proc -and $script:convTrabajo -and $script:convTrabajo.id -eq $id) { Set-Estado 'No se puede borrar mientras está respondiendo.' '#F2C46D'; return }
     $ruta = Join-Path $ConvDir ($id + '.json')
     $titulo = ''
     try { $titulo = (Get-Content $ruta -Raw -Encoding UTF8 | ConvertFrom-Json).titulo } catch {}
@@ -1330,9 +1341,13 @@ function Add-Rutas($rutas) {
     Update-Adjuntos; Update-Carpetas; Save-Config
 }
 
-function Set-Ocupado([bool]$ocupado) {
-    $ui.BtnNueva.IsEnabled = -not $ocupado
-    if ($ocupado) {
+function Set-Ocupado([bool]$ocupado) { Update-BotonEnviar; Update-ListaConv }
+
+# Mientras agy contesta se puede ir a otras conversaciones: el botón es «Parar» solo en la que
+# está contestando.
+function Update-BotonEnviar {
+    $aqui = $script:proc -and (-not $script:convTrabajo -or ($script:conv -and $script:conv.id -eq $script:convTrabajo.id))
+    if ($aqui) {
         $ui.IcoEnviar.Text = [string][char]0xE71A
         $ui.BtnEnviar.ToolTip = 'Parar'
     } else {
@@ -1684,9 +1699,10 @@ function Read-Evento([string]$linea) {
     }
     switch ($ev.event) {
         'init' {
-            if ($script:conv -and -not $script:conv.agyId -and $ev.conversation_id) {
-                $script:conv | Add-Member -NotePropertyName agyId -NotePropertyValue $ev.conversation_id -Force
-                Save-Conv
+            $c = $script:convTrabajo
+            if ($c -and -not $c.agyId -and $ev.conversation_id) {
+                $c | Add-Member -NotePropertyName agyId -NotePropertyValue $ev.conversation_id -Force
+                Save-ConvObj $c
             }
         }
         'step_update' {
@@ -1739,22 +1755,33 @@ $timer.Add_Tick({
         }
         if ($script:pensando) { Write-Respuesta '(sin respuesta)' '#8E8E8E' }
         if ($script:respuesta) {
-            $completo = $script:respuesta.Text.TrimEnd()
-            $script:respuesta.Text = Format-TextoVisible $completo
-            $timerPintar.Stop(); Show-Respuesta
-            if ($script:conv -and -not $script:avisoLogin) {
-                $script:conv.mensajes = @($script:conv.mensajes) + @([pscustomobject]@{ rol = 'agy'; texto = $completo; adjuntos = @() })
-                Save-Conv
-                Update-ListaConv
-            }
+            # La respuesta va a su conversación, aunque en pantalla se esté viendo otra.
+            $actual = $script:conv
+            if ($script:convTrabajo) { $script:conv = $script:convTrabajo }
+            try {
+                $completo = $script:respuesta.Text.TrimEnd()
+                $script:respuesta.Text = Format-TextoVisible $completo
+                $timerPintar.Stop(); Show-Respuesta
+                if ($script:conv -and -not $script:avisoLogin) {
+                    $script:conv.mensajes = @($script:conv.mensajes) + @([pscustomobject]@{ rol = 'agy'; texto = $completo; adjuntos = @() })
+                    Save-Conv
+                }
+            } finally { $script:conv = $actual }
+            $script:convTrabajo = $null; $script:filaTrabajo = $null
+            Update-ListaConv
             Update-BarraFicha
+            Update-BotonEnviar
         }
         $ui.Prompt.Focus() | Out-Null
     }
 })
 
 function Enviar([string]$instrucciones = '') {
-    if ($script:proc) { return }
+    if ($script:proc) {
+        $t = if ($script:convTrabajo) { $script:convTrabajo.titulo } else { 'otra conversación' }
+        Set-Estado "Espera: Valora está respondiendo en «$t». Solo puede contestar una cosa a la vez." '#F2C46D'
+        return
+    }
     if (-not $script:Agy) { $script:Agy = Find-Agy }
     if (-not $script:Agy) {
         [System.Windows.MessageBox]::Show('No encuentro agy. Ejecuta el instalador (InstalarValora.exe).', 'Valora') | Out-Null
@@ -1816,6 +1843,8 @@ function Enviar([string]$instrucciones = '') {
 
     Add-MensajeUsuario $texto $adjuntos
     Add-MensajeAgy
+    $script:convTrabajo = $script:conv
+    $script:filaTrabajo = $ui.Chat.Children[$ui.Chat.Children.Count - 1]
     $ui.Scroll.ScrollToEnd()
 
     $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -1857,7 +1886,7 @@ function Parar {
 }
 
 # ---------- Eventos ----------
-$ui.BtnEnviar.Add_Click({ if ($script:proc) { Parar } else { Enviar } })
+$ui.BtnEnviar.Add_Click({ if ($ui.BtnEnviar.ToolTip -eq 'Parar') { Parar } else { Enviar } })
 
 $ui.Prompt.Add_PreviewKeyDown({
     if ($_.Key -eq 'Return') {
@@ -1897,13 +1926,22 @@ $ui.Prompt.Add_PreviewKeyDown({
             Add-Rutas @([System.Windows.Clipboard]::GetFileDropList())
             Set-Estado 'Archivos pegados como adjuntos.' '#81C995'
             $_.Handled = $true
-        } elseif ([System.Windows.Clipboard]::ContainsImage()) {
+        } elseif ([System.Windows.Clipboard]::ContainsData('PNG') -or [System.Windows.Clipboard]::ContainsImage()) {
             New-Item -ItemType Directory -Force $PegadosDir | Out-Null
             $ruta = Join-Path $PegadosDir ('recorte-{0:yyyyMMdd-HHmmss}.png' -f (Get-Date))
-            $png = New-Object System.Windows.Media.Imaging.PngBitmapEncoder
-            $png.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create([System.Windows.Clipboard]::GetImage()))
-            $fs = [IO.File]::Create($ruta)
-            try { $png.Save($fs) } finally { $fs.Dispose() }
+            # Los navegadores copian la imagen también como PNG: se guarda tal cual, que conserva
+            # la transparencia. Si no, se convierte el mapa de bits (Recortes, capturas).
+            $datosPng = $null
+            try { $datosPng = [System.Windows.Clipboard]::GetData('PNG') } catch {}
+            if ($datosPng -is [IO.Stream]) {
+                $fs = [IO.File]::Create($ruta)
+                try { $datosPng.CopyTo($fs) } finally { $fs.Dispose(); $datosPng.Dispose() }
+            } else {
+                $png = New-Object System.Windows.Media.Imaging.PngBitmapEncoder
+                $png.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create([System.Windows.Clipboard]::GetImage()))
+                $fs = [IO.File]::Create($ruta)
+                try { $png.Save($fs) } finally { $fs.Dispose() }
+            }
             Add-Rutas @($ruta)
             Set-Estado 'Imagen pegada como adjunto.' '#81C995'
             $_.Handled = $true
