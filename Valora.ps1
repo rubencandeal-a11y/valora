@@ -156,6 +156,63 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
       </Setter>
     </Style>
 
+    <!-- Barras de desplazamiento finas y oscuras, como en la web de Gemini -->
+    <Style x:Key="PulgarScroll" TargetType="Thumb">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Thumb">
+            <Border x:Name="b" Background="#4A4A4A" CornerRadius="3"/>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#6A6A6A"/></Trigger>
+              <Trigger Property="IsDragging" Value="True"><Setter TargetName="b" Property="Background" Value="#7A7A7A"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="HuecoScroll" TargetType="RepeatButton">
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="ScrollBar">
+      <Setter Property="Width" Value="8"/>
+      <Setter Property="MinWidth" Value="8"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Track x:Name="PART_Track" IsDirectionReversed="True" Margin="1,2">
+              <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource HuecoScroll}" Command="ScrollBar.PageUpCommand"/></Track.DecreaseRepeatButton>
+              <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource HuecoScroll}" Command="ScrollBar.PageDownCommand"/></Track.IncreaseRepeatButton>
+              <Track.Thumb><Thumb Style="{StaticResource PulgarScroll}" MinHeight="24"/></Track.Thumb>
+            </Track>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="Orientation" Value="Horizontal">
+          <Setter Property="Width" Value="Auto"/>
+          <Setter Property="MinWidth" Value="0"/>
+          <Setter Property="Height" Value="8"/>
+          <Setter Property="MinHeight" Value="8"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ScrollBar">
+                <Track x:Name="PART_Track" IsDirectionReversed="False" Margin="2,1">
+                  <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource HuecoScroll}" Command="ScrollBar.PageLeftCommand"/></Track.DecreaseRepeatButton>
+                  <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource HuecoScroll}" Command="ScrollBar.PageRightCommand"/></Track.IncreaseRepeatButton>
+                  <Track.Thumb><Thumb Style="{StaticResource PulgarScroll}" MinWidth="24"/></Track.Thumb>
+                </Track>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
     <Style x:Key="Seccion" TargetType="TextBlock">
       <Setter Property="Foreground" Value="#8E8E8E"/>
       <Setter Property="FontSize" Value="11.5"/>
@@ -266,23 +323,29 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
 
           <!-- Carpetas: la de trabajo y las conectadas, en una sola tarjeta -->
           <TextBlock Text="CARPETAS" Style="{StaticResource Seccion}"/>
-          <Border Background="#202020" CornerRadius="10" Padding="10,8,6,6" Margin="2,0">
+          <Border Background="#202020" CornerRadius="10" Padding="10,6,4,4" Margin="2,0">
             <StackPanel>
-              <TextBlock Text="De trabajo" Foreground="#8E8E8E" FontSize="11.5"/>
-              <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" Foreground="#CFCFCF" FontSize="13" Margin="0,2,0,0"/>
-              <StackPanel Orientation="Horizontal" Margin="-8,4,0,0">
-                <Button x:Name="BtnWs" Style="{StaticResource Plano}" Padding="8,4" FontSize="12.5" Foreground="#B4B4B4" Content="Cambiar"/>
-                <Button x:Name="BtnAbrirWs" Style="{StaticResource Plano}" Padding="8,4" FontSize="12.5" Foreground="#B4B4B4" Content="Abrir en Explorador"/>
-              </StackPanel>
-              <Border Height="1" Background="#2E2E2E" Margin="0,6,4,6"/>
-              <TextBlock Text="Conectadas" Foreground="#8E8E8E" FontSize="11.5" Margin="0,0,0,2"/>
-              <ItemsControl x:Name="ListaCarpetas" Margin="-10,0,0,0"/>
-              <Button x:Name="BtnCarpeta" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="8,5" Margin="-8,0,0,0" FontSize="12.5">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="11"/>
-                  <TextBlock Text="Conectar carpeta"/>
+              <DockPanel>
+                <Button x:Name="BtnAbrirWs" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Abrir en Explorador">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8A7;" FontSize="12" Foreground="#9A9A9A"/>
+                </Button>
+                <Button x:Name="BtnWs" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Cambiar carpeta de trabajo">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="12" Foreground="#9A9A9A"/>
+                </Button>
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" FontSize="13" Foreground="#B4B4B4" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="De trabajo" Foreground="#7A7A7A" FontSize="10.5"/>
+                  <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" Foreground="#E0E0E0" FontSize="13"/>
                 </StackPanel>
-              </Button>
+              </DockPanel>
+              <Border Height="1" Background="#2E2E2E" Margin="0,5,6,3"/>
+              <DockPanel>
+                <Button x:Name="BtnCarpeta" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Conectar carpeta">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="12" Foreground="#9A9A9A"/>
+                </Button>
+                <TextBlock Text="Conectadas" Foreground="#7A7A7A" FontSize="10.5" VerticalAlignment="Center"/>
+              </DockPanel>
+              <ItemsControl x:Name="ListaCarpetas" Margin="-10,0,0,0"/>
             </StackPanel>
           </Border>
           </StackPanel>
@@ -290,15 +353,14 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
 
         <StackPanel DockPanel.Dock="Bottom">
           <StackPanel x:Name="LateralAbajo">
-          <CheckBox x:Name="ChkAuto" Foreground="#B4B4B4" Margin="12,0,0,10" FontSize="13"
-                    Content="Modo automático (no pide permisos)"
-                    ToolTip="agy lee, crea archivos y ejecuta comandos sin preguntar"/>
-          <Button x:Name="BtnTerminal" Style="{StaticResource Plano}">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE756;" VerticalAlignment="Center" Margin="0,0,10,0"/>
-              <TextBlock Text="Abrir terminal (agy)"/>
-            </StackPanel>
-          </Button>
+          <DockPanel Margin="12,0,2,0">
+            <Button x:Name="BtnTerminal" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="8,6" ToolTip="Abrir terminal (agy)">
+              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE756;" FontSize="13" Foreground="#B4B4B4"/>
+            </Button>
+            <CheckBox x:Name="ChkAuto" Foreground="#B4B4B4" FontSize="13" VerticalAlignment="Center"
+                      Content="Modo automático"
+                      ToolTip="No pide permisos: agy lee, crea archivos y ejecuta comandos sin preguntar"/>
+          </DockPanel>
           <Border Background="#202020" CornerRadius="8" Padding="12,8" Margin="2,8,2,0">
             <Grid>
               <StackPanel Margin="0,0,70,0">
@@ -326,8 +388,20 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               </StackPanel>
             </Button>
           </StackPanel>
-          <TextBlock DockPanel.Dock="Top" Text="CONVERSACIONES" Style="{StaticResource Seccion}"/>
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <Grid DockPanel.Dock="Top">
+            <TextBlock Text="CONVERSACIONES" Style="{StaticResource Seccion}"/>
+            <TextBlock x:Name="TxtNumConv" Foreground="#5A5A5A" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,6"/>
+          </Grid>
+          <Border x:Name="CajaBuscarConv" DockPanel.Dock="Top" Background="#202020" CornerRadius="8" Margin="4,0,4,6" Padding="8,0" Visibility="Collapsed">
+            <Grid>
+              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE721;" FontSize="11" Foreground="#7A7A7A" VerticalAlignment="Center"/>
+              <TextBox x:Name="BuscarConv" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC"
+                       FontSize="12.5" Padding="0,6" Margin="18,0,0,0" VerticalContentAlignment="Center"/>
+              <TextBlock x:Name="BuscarConvPista" Text="Buscar conversación" Foreground="#6A6A6A" FontSize="12.5" Margin="20,0,0,0"
+                         VerticalAlignment="Center" IsHitTestVisible="False"/>
+            </Grid>
+          </Border>
+          <ScrollViewer x:Name="ScrollConv" VerticalScrollBarVisibility="Auto" Padding="0,0,2,0">
             <StackPanel x:Name="ListaConv"/>
           </ScrollViewer>
         </DockPanel>
@@ -819,7 +893,7 @@ $ui = @{}
 foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpeta','ChkAuto','BtnTerminal','TxtEstado',
                'Scroll','Chat','Inicio','Sugerencias','Adjuntos','BtnAdjuntar','Prompt','Placeholder','BtnEnviar','IcoEnviar',
                'Login','LoginTexto','BtnLogin','LoginCodigo','CodigoLogin','BtnReabrir','BtnCodigo','LoginEstado','BtnLoginLuego',
-               'TxtCuenta','BtnLogout','ListaConv','AvisoVersion','BtnReiniciar','BtnReiniciarTitulo','TxtVersion',
+               'TxtCuenta','BtnLogout','ListaConv','TxtNumConv','CajaBuscarConv','BuscarConv','BuscarConvPista','ScrollConv','AvisoVersion','BtnReiniciar','BtnReiniciarTitulo','TxtVersion',
                'BtnFichas','InsigniaEntorno','TxtInsigniaEntorno','BarraFicha','BarraEntorno','TxtBarraEntorno','TxtBarraFicha',
                'TxtBarraEstado','BtnAbrirFicha','BtnRevisarEnviar','PanelFC','PanelEntorno','TxtPanelEntorno','BtnConexionFC',
                'BtnCerrarFC','ConexionFC','RadPRE','RadPRO','ClaveFC','BtnGuardarConexion','BuscarFC','EstadoFC','BtnBuscarFC',
@@ -1190,45 +1264,115 @@ function Save-ConvObj($c) {
     $c | ConvertTo-Json -Depth 6 | Set-Content $ruta -Encoding UTF8
 }
 
+# Solo se lee cada archivo cuando cambia: con muchas conversaciones la lista se repinta a menudo.
+$script:cacheConvs = @{}
 function Get-Convs {
     $lista = @()
+    $vistos = @{}
     foreach ($f in Get-ChildItem $ConvDir -Filter *.json -ErrorAction SilentlyContinue) {
-        try {
-            $c = Get-Content $f.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($c.id) { $lista += $c }
-        } catch {}
+        $vistos[$f.FullName] = $true
+        $e = $script:cacheConvs[$f.FullName]
+        if (-not $e -or $e.Escrito -ne $f.LastWriteTimeUtc) {
+            try {
+                $c = Get-Content $f.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+                if (-not $c.id) { continue }
+                $e = [pscustomobject]@{ Escrito = $f.LastWriteTimeUtc; id = $c.id; titulo = [string]$c.titulo; actualizada = [datetime]$c.actualizada }
+                $script:cacheConvs[$f.FullName] = $e
+            } catch { continue }
+        }
+        $lista += $e
     }
-    return @($lista | Sort-Object { [datetime]$_.actualizada } -Descending)
+    foreach ($k in @($script:cacheConvs.Keys)) { if (-not $vistos[$k]) { $script:cacheConvs.Remove($k) } }
+    return @($lista | Sort-Object actualizada -Descending)
+}
+
+function Get-GrupoFecha([datetime]$d) {
+    $hoy = (Get-Date).Date
+    if ($d -ge $hoy) { return 'Hoy' }
+    if ($d -ge $hoy.AddDays(-1)) { return 'Ayer' }
+    if ($d -ge $hoy.AddDays(-7)) { return 'Últimos 7 días' }
+    if ($d -ge $hoy.AddDays(-30)) { return 'Últimos 30 días' }
+    return (Get-Culture).TextInfo.ToTitleCase($d.ToString('MMMM yyyy', [Globalization.CultureInfo]'es-ES'))
 }
 
 function Update-ListaConv {
     $ui.ListaConv.Children.Clear()
-    foreach ($c in Get-Convs) {
+    $todas = Get-Convs
+    $filtro = $ui.BuscarConv.Text.Trim()
+    $ui.CajaBuscarConv.Visibility = if ($todas.Count -gt 6 -or $filtro) { 'Visible' } else { 'Collapsed' }
+    $ui.TxtNumConv.Text = if ($todas.Count) { [string]$todas.Count } else { '' }
+    $convs = if ($filtro) { @($todas | Where-Object { $_.titulo -like "*$filtro*" }) } else { $todas }
+    if (-not $convs.Count) {
+        $v = New-Object System.Windows.Controls.TextBlock
+        $v.Text = if ($filtro) { 'Ninguna conversación coincide.' } else { 'Aún no hay conversaciones.' }
+        $v.Foreground = Brush '#6A6A6A'; $v.FontSize = 12.5; $v.Margin = '12,4,12,0'; $v.TextWrapping = 'Wrap'
+        [void]$ui.ListaConv.Children.Add($v)
+        return
+    }
+    $grupo = $null
+    foreach ($c in $convs) {
+        $g0 = Get-GrupoFecha $c.actualizada
+        if ($g0 -ne $grupo) {
+            $grupo = $g0
+            $h = New-Object System.Windows.Controls.TextBlock
+            $h.Text = $grupo; $h.Foreground = Brush '#7A7A7A'; $h.FontSize = 11.5; $h.FontWeight = 'SemiBold'
+            $h.Margin = $(if ($ui.ListaConv.Children.Count) { '12,12,12,4' } else { '12,2,12,4' })
+            [void]$ui.ListaConv.Children.Add($h)
+        }
+        $activa = $script:conv -and $script:conv.id -eq $c.id
+        $trabajando = $script:proc -and $script:convTrabajo -and $script:convTrabajo.id -eq $c.id
+
         $g = New-Object System.Windows.Controls.Grid
         $g.Margin = '2,0,2,1'
         $btn = New-Object System.Windows.Controls.Button
-        $btn.Style = $win.FindResource('Plano'); $btn.Padding = '10,7'; $btn.Tag = $c.id
-        if ($script:conv -and $script:conv.id -eq $c.id) { $btn.Background = Brush '#2A2A2A' }
-        $sp = New-Object System.Windows.Controls.StackPanel
+        $btn.Style = $win.FindResource('Plano'); $btn.Padding = '10,8'; $btn.Tag = $c.id
+        $btn.HorizontalContentAlignment = 'Stretch'
+        if ($activa) { $btn.Background = Brush '#2F2F2F' }
+        $fila = New-Object System.Windows.Controls.DockPanel
+        $fila.LastChildFill = $true
+        # A la derecha: la hora, «Respondiendo…» o, al pasar el ratón, la papelera.
+        $hora = New-Object System.Windows.Controls.TextBlock
+        $hora.FontSize = 11; $hora.VerticalAlignment = 'Center'; $hora.Margin = '8,0,24,0'
+        if ($trabajando) { $hora.Text = '● Respondiendo'; $hora.Foreground = Brush '#E8A33D' }
+        else {
+            $hora.Text = if ($c.actualizada -ge (Get-Date).Date) { $c.actualizada.ToString('HH:mm') } else { $c.actualizada.ToString('d MMM', [Globalization.CultureInfo]'es-ES').TrimEnd('.') }
+            $hora.Foreground = Brush '#6A6A6A'
+        }
+        [System.Windows.Controls.DockPanel]::SetDock($hora, 'Right')
         $t = New-Object System.Windows.Controls.TextBlock
-        $t.Text = $c.titulo; $t.TextTrimming = 'CharacterEllipsis'; $t.Margin = '0,0,22,0'; $t.FontSize = 13.5
-        $f = New-Object System.Windows.Controls.TextBlock
-        $f.Text = ([datetime]$c.actualizada).ToString('dd/MM/yyyy HH:mm'); $f.Foreground = Brush '#7A7A7A'; $f.FontSize = 11
-        if ($script:proc -and $script:convTrabajo -and $script:convTrabajo.id -eq $c.id) { $f.Text = 'Respondiendo…'; $f.Foreground = Brush '#E8A33D' }
-        [void]$sp.Children.Add($t); [void]$sp.Children.Add($f)
-        $btn.Content = $sp
-        $btn.ToolTip = $c.titulo
+        $t.Text = $c.titulo; $t.TextTrimming = 'CharacterEllipsis'; $t.FontSize = 13.5; $t.VerticalAlignment = 'Center'
+        $t.Foreground = Brush $(if ($activa) { '#FFFFFF' } else { '#D6D6D6' })
+        [void]$fila.Children.Add($hora); [void]$fila.Children.Add($t)
+        $btn.Content = $fila
+        $btn.ToolTip = $c.titulo + "`n" + $c.actualizada.ToString('dd/MM/yyyy HH:mm')
         $btn.Add_Click({ Set-Modo 'valora'; Open-Conv $this.Tag })
+
         $x = New-Object System.Windows.Controls.Button
-        $x.Style = $win.FindResource('Plano'); $x.Padding = '7'; $x.HorizontalAlignment = 'Right'; $x.VerticalAlignment = 'Center'
+        $x.Style = $win.FindResource('Plano'); $x.Padding = '6'; $x.Margin = '0,0,4,0'
+        $x.HorizontalAlignment = 'Right'; $x.VerticalAlignment = 'Center'
         $x.Tag = $c.id; $x.ToolTip = 'Borrar conversación'
         [System.Windows.Automation.AutomationProperties]::SetName($x, 'Borrar: ' + $c.titulo)
-        $x.Content = New-Icono ([string][char]0xE74D) 12 '#8E8E8E'
+        $x.Content = New-Icono ([string][char]0xE74D) 11 '#9A9A9A'
         $x.Add_Click({ Remove-Conv $this.Tag })
+        $x.Visibility = $(if ($activa) { 'Visible' } else { 'Hidden' })
+        $g.Tag = $x
+        if (-not $activa) {
+            $g.Add_MouseEnter({ $this.Tag.Visibility = 'Visible' })
+            $g.Add_MouseLeave({ $this.Tag.Visibility = 'Hidden' })
+        }
         [void]$g.Children.Add($btn); [void]$g.Children.Add($x)
         [void]$ui.ListaConv.Children.Add($g)
     }
 }
+
+$ui.BuscarConv.Add_TextChanged({
+    $ui.BuscarConvPista.Visibility = if ($ui.BuscarConv.Text) { 'Collapsed' } else { 'Visible' }
+    Update-ListaConv
+    $ui.ScrollConv.ScrollToTop()
+})
+$ui.BuscarConv.Add_PreviewKeyDown({
+    if ($_.Key -eq 'Escape') { $ui.BuscarConv.Text = ''; $_.Handled = $true }
+})
 
 function New-ConvVacia {
     $script:conv = $null
@@ -1349,7 +1493,7 @@ function Update-Carpetas {
         $g = New-Object System.Windows.Controls.Grid
         $g.Margin = '2,0,2,2'
         $btn = New-Object System.Windows.Controls.Button
-        $btn.Style = $win.FindResource('Plano'); $btn.Padding = '10,6'; $btn.ToolTip = $c; $btn.Tag = $c
+        $btn.Style = $win.FindResource('Plano'); $btn.Padding = '10,4'; $btn.ToolTip = $c; $btn.Tag = $c
         $sp = New-Object System.Windows.Controls.StackPanel; $sp.Orientation = 'Horizontal'
         [void]$sp.Children.Add((New-Icono ([string][char]0xE8B7) 13 '#B4B4B4'))
         $t = New-Object System.Windows.Controls.TextBlock
@@ -2040,7 +2184,7 @@ $ui.BtnWs.Add_Click({
     $dlg.SelectedPath = $script:workspace
     if ($dlg.ShowDialog() -eq 'OK') {
         $script:workspace = $dlg.SelectedPath
-        $ui.TxtWs.Text = $script:workspace; $ui.TxtWs.ToolTip = $script:workspace
+        $ui.TxtWs.Text = Split-Path $script:workspace -Leaf; $ui.TxtWs.ToolTip = $script:workspace
         New-ConvVacia
         Save-Config
         Set-Estado 'Carpeta cambiada. La conversación empieza de nuevo.'
@@ -3260,7 +3404,7 @@ if ($script:esInstalada) {
         Save-VersionLocal $vh
     }
 }
-$ui.TxtWs.Text = $script:workspace; $ui.TxtWs.ToolTip = $script:workspace
+$ui.TxtWs.Text = Split-Path $script:workspace -Leaf; $ui.TxtWs.ToolTip = $script:workspace
 $ui.ChkAuto.IsChecked = $cfg.auto
 Update-Adjuntos; Update-Carpetas; Update-Inicio; Update-ListaConv
 Update-Entorno; Update-BarraFicha
