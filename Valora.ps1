@@ -321,38 +321,41 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             </StackPanel>
           </Button>
 
-          <!-- Carpetas: la de trabajo y las conectadas, en una sola tarjeta -->
-          <TextBlock Text="Carpetas" Style="{StaticResource Seccion}"/>
-          <Border Background="#181B20" BorderBrush="#2A2E36" BorderThickness="1" CornerRadius="10" Padding="9,6,4,4">
-            <StackPanel>
+          <Button x:Name="BtnFichas" Style="{StaticResource Plano}" Margin="0,4,0,0" HorizontalContentAlignment="Stretch"
+                  ToolTip="Fichas de Foticos Collection pendientes de tasar">
+            <DockPanel>
+              <Border x:Name="InsigniaEntorno" DockPanel.Dock="Right" CornerRadius="6" Padding="6,1" Background="#8A5A12" VerticalAlignment="Center">
+                <TextBlock x:Name="TxtInsigniaEntorno" Text="PRE" FontSize="10.5" FontWeight="Bold" Foreground="White"/>
+              </Border>
+              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8A1;" VerticalAlignment="Center" Margin="0,0,10,0"/>
+              <TextBlock Text="Fichas por tasar" VerticalAlignment="Center"/>
+            </DockPanel>
+          </Button>
+
+          <!-- Carpeta de trabajo; los botones de cambiarla y conectar otra salen al pasar el ratón -->
+          <Grid x:Name="FilaWs" Margin="0,1,0,0" Background="Transparent">
+            <Button x:Name="BtnAbrirWs" Style="{StaticResource Plano}" HorizontalContentAlignment="Stretch">
               <DockPanel>
-                <Button x:Name="BtnAbrirWs" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Abrir en Explorador">
-                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8A7;" FontSize="12" Foreground="#969CA6"/>
-                </Button>
-                <Button x:Name="BtnWs" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Cambiar carpeta de trabajo">
-                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="12" Foreground="#969CA6"/>
-                </Button>
-                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" FontSize="13" Foreground="#ACB1B9" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="De trabajo" Foreground="#767C87" FontSize="10.5"/>
-                  <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" Foreground="#E0DCD4" FontSize="13"/>
-                </StackPanel>
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,60,0"/>
               </DockPanel>
-              <Border Height="1" Background="#2A2E36" Margin="0,5,6,3"/>
-              <DockPanel>
-                <Button x:Name="BtnCarpeta" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Conectar carpeta">
-                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="12" Foreground="#969CA6"/>
-                </Button>
-                <TextBlock Text="Conectadas" Foreground="#767C87" FontSize="10.5" VerticalAlignment="Center"/>
-              </DockPanel>
-              <ItemsControl x:Name="ListaCarpetas" Margin="-10,0,0,0"/>
+            </Button>
+            <StackPanel x:Name="IconosWs" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" Visibility="Hidden">
+              <Button x:Name="BtnWs" Style="{StaticResource Plano}" Padding="6" ToolTip="Cambiar carpeta de trabajo">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="12" Foreground="#969CA6"/>
+              </Button>
+              <Button x:Name="BtnCarpeta" Style="{StaticResource Plano}" Padding="6" ToolTip="Conectar otra carpeta">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="12" Foreground="#969CA6"/>
+              </Button>
             </StackPanel>
-          </Border>
+          </Grid>
+          <ItemsControl x:Name="ListaCarpetas"/>
           </StackPanel>
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom">
           <StackPanel x:Name="LateralAbajo">
+          <Border Height="1" Background="#22262D" Margin="0,0,0,8"/>
           <DockPanel Margin="10,0,0,0">
             <Button x:Name="BtnTerminal" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="8,6" ToolTip="Abrir terminal (agy)">
               <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE756;" FontSize="13" Foreground="#ACB1B9"/>
@@ -361,33 +364,21 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                       Content="Modo automático"
                       ToolTip="No pide permisos: agy lee, crea archivos y ejecuta comandos sin preguntar"/>
           </DockPanel>
-          <Border Background="#181B20" BorderBrush="#2A2E36" BorderThickness="1" CornerRadius="10" Padding="10,8" Margin="0,8,0,0">
-            <Grid>
-              <StackPanel Margin="0,0,70,0">
-                <TextBlock Text="Cuenta de Google" Foreground="#8C929C" FontSize="11.5"/>
-                <TextBlock x:Name="TxtCuenta" Text="—" Foreground="#CDCAC3" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
-              </StackPanel>
-              <Button x:Name="BtnLogout" Style="{StaticResource Plano}" Padding="8,4" FontSize="12" Foreground="#ACB1B9"
-                      HorizontalAlignment="Right" VerticalAlignment="Center" Content="Cerrar sesión"/>
-            </Grid>
-          </Border>
+          <DockPanel Margin="6,6,0,0">
+            <Button x:Name="BtnLogout" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="8,6" ToolTip="Cerrar sesión de Google">
+              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7E8;" FontSize="13" Foreground="#ACB1B9"/>
+            </Button>
+            <Border Width="26" Height="26" CornerRadius="13" Background="#2C313A" VerticalAlignment="Center">
+              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE77B;" FontSize="12" Foreground="#ACB1B9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <TextBlock x:Name="TxtCuenta" Text="—" Foreground="#CDCAC3" FontSize="12.5" TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+          </DockPanel>
           </StackPanel>
           <TextBlock x:Name="TxtEstado" Foreground="#8C929C" FontSize="12" TextWrapping="Wrap" Margin="10,10,8,0"/>
           <TextBlock x:Name="TxtVersion" Foreground="#5A606B" FontSize="11" Margin="10,4,8,0"/>
         </StackPanel>
-        <DockPanel x:Name="LateralMedio" Margin="0,4,0,8">
-          <StackPanel DockPanel.Dock="Top">
-            <TextBlock Text="Foticos Collection" Style="{StaticResource Seccion}"/>
-            <Button x:Name="BtnFichas" Style="{StaticResource Plano}">
-              <StackPanel Orientation="Horizontal">
-                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8A1;" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <TextBlock Text="Fichas por tasar"/>
-                <Border x:Name="InsigniaEntorno" CornerRadius="6" Padding="6,1" Margin="10,0,0,0" Background="#8A5A12" VerticalAlignment="Center">
-                  <TextBlock x:Name="TxtInsigniaEntorno" Text="PRE" FontSize="10.5" FontWeight="Bold" Foreground="White"/>
-                </Border>
-              </StackPanel>
-            </Button>
-          </StackPanel>
+        <DockPanel x:Name="LateralMedio" Margin="0,10,0,10">
           <Grid DockPanel.Dock="Top">
             <TextBlock Text="Conversaciones" Style="{StaticResource Seccion}"/>
             <TextBlock x:Name="TxtNumConv" Foreground="#5A606B" FontSize="11.5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,6"/>
@@ -893,7 +884,7 @@ $ui = @{}
 foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpeta','ChkAuto','BtnTerminal','TxtEstado',
                'Scroll','Chat','Inicio','Sugerencias','Adjuntos','BtnAdjuntar','Prompt','Placeholder','BtnEnviar','IcoEnviar',
                'Login','LoginTexto','BtnLogin','LoginCodigo','CodigoLogin','BtnReabrir','BtnCodigo','LoginEstado','BtnLoginLuego',
-               'TxtCuenta','BtnLogout','ListaConv','TxtNumConv','CajaBuscarConv','BuscarConv','BuscarConvPista','ScrollConv','AvisoVersion','BtnReiniciar','BtnReiniciarTitulo','TxtVersion',
+               'TxtCuenta','BtnLogout','FilaWs','IconosWs','ListaConv','TxtNumConv','CajaBuscarConv','BuscarConv','BuscarConvPista','ScrollConv','AvisoVersion','BtnReiniciar','BtnReiniciarTitulo','TxtVersion',
                'BtnFichas','InsigniaEntorno','TxtInsigniaEntorno','BarraFicha','BarraEntorno','TxtBarraEntorno','TxtBarraFicha',
                'TxtBarraEstado','BtnAbrirFicha','BtnRevisarEnviar','PanelFC','PanelEntorno','TxtPanelEntorno','BtnConexionFC',
                'BtnCerrarFC','ConexionFC','RadPRE','RadPRO','ClaveFC','BtnGuardarConexion','BuscarFC','EstadoFC','BtnBuscarFC',
@@ -1498,11 +1489,11 @@ function Update-Carpetas {
     $ui.ListaCarpetas.Items.Clear()
     foreach ($c in $script:carpetas) {
         $g = New-Object System.Windows.Controls.Grid
-        $g.Margin = '2,0,2,2'
+        $g.Margin = '0,0,0,1'
         $btn = New-Object System.Windows.Controls.Button
-        $btn.Style = $win.FindResource('Plano'); $btn.Padding = '10,4'; $btn.ToolTip = $c; $btn.Tag = $c
+        $btn.Style = $win.FindResource('Plano'); $btn.Padding = '10,7'; $btn.ToolTip = $c; $btn.Tag = $c
         $sp = New-Object System.Windows.Controls.StackPanel; $sp.Orientation = 'Horizontal'
-        [void]$sp.Children.Add((New-Icono ([string][char]0xE8B7) 13 '#ACB1B9'))
+        [void]$sp.Children.Add((New-Icono ([string][char]0xE71B) 13 '#ACB1B9'))
         $t = New-Object System.Windows.Controls.TextBlock
         $t.Text = Split-Path $c -Leaf; $t.Margin = '10,0,24,0'; $t.TextTrimming = 'CharacterEllipsis'; $t.MaxWidth = 170
         [void]$sp.Children.Add($t)
@@ -2191,7 +2182,7 @@ $ui.BtnWs.Add_Click({
     $dlg.SelectedPath = $script:workspace
     if ($dlg.ShowDialog() -eq 'OK') {
         $script:workspace = $dlg.SelectedPath
-        $ui.TxtWs.Text = Split-Path $script:workspace -Leaf; $ui.TxtWs.ToolTip = $script:workspace
+        $ui.TxtWs.Text = Split-Path $script:workspace -Leaf; $ui.BtnAbrirWs.ToolTip = "Carpeta de trabajo (abrir en Explorador)`n" + $script:workspace
         New-ConvVacia
         Save-Config
         Set-Estado 'Carpeta cambiada. La conversación empieza de nuevo.'
@@ -2199,6 +2190,8 @@ $ui.BtnWs.Add_Click({
 })
 
 $ui.BtnAbrirWs.Add_Click({ Start-Process explorer.exe $script:workspace })
+$ui.FilaWs.Add_MouseEnter({ $ui.IconosWs.Visibility = 'Visible' })
+$ui.FilaWs.Add_MouseLeave({ $ui.IconosWs.Visibility = 'Hidden' })
 $ui.ChkAuto.Add_Click({ Save-Config })
 
 $ui.BtnTerminal.Add_Click({
@@ -3411,7 +3404,7 @@ if ($script:esInstalada) {
         Save-VersionLocal $vh
     }
 }
-$ui.TxtWs.Text = Split-Path $script:workspace -Leaf; $ui.TxtWs.ToolTip = $script:workspace
+$ui.TxtWs.Text = Split-Path $script:workspace -Leaf; $ui.BtnAbrirWs.ToolTip = "Carpeta de trabajo (abrir en Explorador)`n" + $script:workspace
 $ui.ChkAuto.IsChecked = $cfg.auto
 Update-Adjuntos; Update-Carpetas; Update-Inicio; Update-ListaConv
 Update-Entorno; Update-BarraFicha
