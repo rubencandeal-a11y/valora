@@ -170,7 +170,7 @@ $script:pensando = $true
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#262626"/></Trigger>
-              <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="Background" Value="#1F3A2E"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="Background" Value="#4A1E1E"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -205,14 +205,14 @@ $script:pensando = $true
     </Grid.ColumnDefinitions>
 
     <!-- Barra lateral -->
-    <Border Background="{StaticResource Sidebar}">
+    <Border x:Name="Lateral" Background="{StaticResource Sidebar}">
       <DockPanel Margin="10,14,10,12">
         <StackPanel DockPanel.Dock="Top">
           <StackPanel Orientation="Horizontal" Margin="10,0,0,14">
-            <Border Width="30" Height="30" CornerRadius="8" Background="#ECECEC">
-              <TextBlock Text="V" Foreground="#171717" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Border x:Name="LogoFondo" Width="30" Height="30" CornerRadius="8" Background="#ECECEC">
+              <TextBlock x:Name="LogoLetra" Text="V" Foreground="#171717" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <TextBlock Text="Valora" FontSize="18" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+            <TextBlock x:Name="LogoTexto" Text="Valora" FontSize="18" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
             <Button x:Name="BtnReiniciarTitulo" Margin="10,0,0,0" VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed"
                     ToolTip="Hay una versión nueva de Valora. Se aplica sola en cuanto no estés usando la ventana; pulsa para aplicarla ya.">
               <Button.Template>
@@ -428,17 +428,22 @@ $script:pensando = $true
     </Grid>
 
     <!-- YouTube: elegir vídeos del canal y volver a subirlos (habla con la web de Documents\youtube) -->
-    <Grid x:Name="PanelYT" Grid.Column="1" Background="#212121" Visibility="Collapsed" Panel.ZIndex="4">
+    <Grid x:Name="PanelYT" Grid.Column="1" Background="#1F1B1B" Visibility="Collapsed" Panel.ZIndex="4">
       <DockPanel Margin="24,18,24,14">
         <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
           <StackPanel>
             <TextBlock Text="Resubir vídeos de YouTube" FontSize="20" FontWeight="SemiBold"/>
             <TextBlock x:Name="TxtYTResumen" Foreground="#8E8E8E" FontSize="12.5" Margin="0,2,0,0"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Border x:Name="ChipYTServidor" CornerRadius="10" Padding="10,4" Background="#3A3A3A" VerticalAlignment="Center" Margin="0,0,6,0">
+                <TextBlock x:Name="TxtYTServidorChip" Text="Servidor…" FontSize="12.5" Foreground="White"/>
+              </Border>
+              <Border x:Name="ChipYTCanal" CornerRadius="10" Padding="10,4" Background="#4A2323" VerticalAlignment="Center">
+                <TextBlock x:Name="TxtYTCanal" Text="Sin conectar" FontSize="12.5" Foreground="White"/>
+              </Border>
+            </StackPanel>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-            <Border x:Name="ChipYTCanal" CornerRadius="10" Padding="10,4" Background="#4A2323" VerticalAlignment="Center">
-              <TextBlock x:Name="TxtYTCanal" Text="Sin conectar" FontSize="12.5" Foreground="White"/>
-            </Border>
             <Button x:Name="BtnYTConectar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Margin="6,0,0,0" Content="Conectar YouTube"
                     ToolTip="Entrar con la cuenta de Google dueña del canal al que se suben los vídeos"/>
             <Button x:Name="BtnYTActualizar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Actualizar listado"
@@ -486,7 +491,63 @@ $script:pensando = $true
           </StackPanel>
         </Border>
 
-        <Border x:Name="YTAviso" DockPanel.Dock="Top" Background="#1E2A24" BorderBrush="#2E7D5A" BorderThickness="1" CornerRadius="12"
+        <Border x:Name="YTCred" DockPanel.Dock="Top" Background="#1E1E1E" CornerRadius="12" Padding="14,12" Margin="0,0,0,12" Visibility="Collapsed">
+          <StackPanel>
+            <Grid Margin="0,0,0,6">
+              <TextBlock Text="Conectar YouTube" FontWeight="SemiBold" FontSize="15"/>
+              <Button x:Name="BtnYTCredCerrar" Style="{StaticResource Plano}" Padding="6" HorizontalAlignment="Right">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE711;" FontSize="11"/>
+              </Button>
+            </Grid>
+            <TextBlock x:Name="TxtYTCredEstado" TextWrapping="Wrap" FontSize="13" Margin="0,0,0,10"/>
+
+            <TextBlock Text="1. Credenciales de la API de YouTube (se hace una sola vez, con cualquier cuenta de Google)" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+            <WrapPanel Margin="0,0,0,4">
+              <Button x:Name="BtnYTPaso1" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="10,5" Margin="0,0,6,6" FontSize="12.5"
+                      Tag="https://console.cloud.google.com/projectcreate" Content="a) Crear proyecto"/>
+              <Button x:Name="BtnYTPaso2" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="10,5" Margin="0,0,6,6" FontSize="12.5"
+                      Tag="https://console.cloud.google.com/apis/library/youtube.googleapis.com" Content="b) Activar YouTube Data API v3"/>
+              <Button x:Name="BtnYTPaso3" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="10,5" Margin="0,0,6,6" FontSize="12.5"
+                      Tag="https://console.cloud.google.com/auth/overview" Content="c) Pantalla de consentimiento"/>
+              <Button x:Name="BtnYTPaso4" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="10,5" Margin="0,0,6,6" FontSize="12.5"
+                      Tag="https://console.cloud.google.com/auth/clients/create" Content="d) Crear credencial"/>
+            </WrapPanel>
+            <TextBlock TextWrapping="Wrap" Foreground="#B4B4B4" FontSize="12.5" LineHeight="19" Margin="0,0,0,8"
+                       Text="En c) elige «Externo» y publícala «En producción» (si se queda en pruebas, el permiso caduca a los 7 días). En d) el tipo es «TV y dispositivos de entrada limitada». Google te da un Client ID y un Client secret: pégalos aquí."/>
+            <Grid Margin="0,0,0,4">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel Margin="0,0,8,0">
+                <TextBlock Text="Client ID" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
+                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
+                  <TextBox x:Name="YTClientId" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"
+                           ToolTip="Acaba en .apps.googleusercontent.com. También se puede pegar aquí el JSON entero que descarga Google."/>
+                </Border>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                <TextBlock Text="Client secret" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
+                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
+                  <PasswordBox x:Name="YTClientSecret" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+                </Border>
+              </StackPanel>
+              <Button x:Name="BtnYTGuardarCred" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717"
+                      Padding="14,7" FontWeight="SemiBold" VerticalAlignment="Bottom" Content="Guardar en el servidor"/>
+            </Grid>
+
+            <TextBlock Text="2. Entrar con la cuenta de Google dueña del canal" FontWeight="SemiBold" FontSize="13" Margin="0,12,0,6"/>
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="BtnYTLoginGoogle" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="14,7"
+                      FontWeight="SemiBold" Content="Conectar con Google"/>
+              <TextBlock Text="Sale un código: se mete en google.com/device con la cuenta del canal y se acepta." Foreground="#B4B4B4"
+                         FontSize="12.5" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border x:Name="YTAviso" DockPanel.Dock="Top" Background="#2A1A1A" BorderBrush="#C4302B" BorderThickness="1" CornerRadius="12"
                 Padding="14,12" Margin="0,0,0,12" Visibility="Collapsed">
           <StackPanel>
             <TextBlock x:Name="TxtYTAviso" TextWrapping="Wrap" LineHeight="21"/>
@@ -495,7 +556,7 @@ $script:pensando = $true
                        BorderThickness="0" Foreground="White" VerticalAlignment="Center" Margin="0,0,14,0"/>
               <Button x:Name="BtnYTCopiar" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="12,6"
                       FontWeight="SemiBold" Content="Copiar código" VerticalAlignment="Center"/>
-              <Button x:Name="BtnYTAbrirGoogle" Style="{StaticResource Plano}" Background="#2E7D5A" Foreground="White" Padding="12,6"
+              <Button x:Name="BtnYTAbrirGoogle" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="12,6"
                       Margin="8,0,0,0" FontWeight="SemiBold" Content="Abrir la página de Google" VerticalAlignment="Center"/>
             </StackPanel>
           </StackPanel>
@@ -540,7 +601,7 @@ $script:pensando = $true
               <ComboBoxItem Content="Ocultos" Tag="unlisted"/>
               <ComboBoxItem Content="Públicos" Tag="public"/>
             </ComboBox>
-            <Button x:Name="BtnYTResubir" Style="{StaticResource Plano}" Background="#2E7D5A" Foreground="White" Padding="14,6"
+            <Button x:Name="BtnYTResubir" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="14,6"
                     Margin="8,0,0,0" FontWeight="SemiBold" Content="Resubir seleccionados" IsEnabled="False"/>
           </StackPanel>
         </Grid>
@@ -739,7 +800,10 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'BtnYTServidor','ChipYTTrabajo','TxtYTTrabajo','YTServidor','YTUrl','YTUsuario','YTClave','BtnYTEntrar',
                'TxtYTServidorEstado','YTAviso','TxtYTAviso','YTCodigoCaja','TxtYTCodigo','BtnYTCopiar','BtnYTAbrirGoogle',
                'YTBuscar','YTBuscarPista','YTPlaylist','YTTipo','YTEstado','TxtYTSel','BtnYTTodos','BtnYTNinguno',
-               'YTPrivacidad','BtnYTResubir','YTLista','TxtYTCola','YTCola','LateralArriba','LateralMedio','LateralAbajo') {
+               'YTPrivacidad','BtnYTResubir','YTLista','TxtYTCola','YTCola','LateralArriba','LateralMedio','LateralAbajo',
+               'YTCred','BtnYTCredCerrar','TxtYTCredEstado','BtnYTPaso1','BtnYTPaso2','BtnYTPaso3','BtnYTPaso4','YTClientId',
+               'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
+               'Lateral','LogoFondo','LogoLetra','LogoTexto') {
     $ui[$n] = $win.FindName($n)
 }
 $icono = Join-Path $ConfigDir 'valora.ico'
@@ -2102,6 +2166,7 @@ $script:ytCargando = $null
 $script:ytPidiendoEstado = $null
 $script:ytEstado = $null
 $script:ytTicks = 0
+$script:ytMensajeCredHasta = Get-Date
 
 function Get-UrlYT {
     if ($script:ytUrl) { return $script:ytUrl.TrimEnd('/') }
@@ -2298,11 +2363,57 @@ function Get-EstadoYT {
         $script:ytPidiendoEstado = $null
         if ($err) {
             if (Test-CaducadoYT) { return }
-            $ui.TxtYTCanal.Text = 'Sin conexión con la web'; $ui.ChipYTCanal.Background = Brush '#4A2323'
+            Set-ChipServidorYT $false $err
             return
         }
+        Set-ChipServidorYT $true
         $script:ytEstado = $res
         Update-EstadoYT $res
+    }
+}
+
+function Set-ChipServidorYT([bool]$ok, [string]$err = '') {
+    $ui.TxtYTServidorChip.Text = if ($ok) { 'Servidor conectado' } else { 'Servidor sin conexión' }
+    $ui.ChipYTServidor.Background = Brush $(if ($ok) { '#1F4A35' } else { '#4A2323' })
+    $ui.ChipYTServidor.ToolTip = (Get-UrlYT) + $(if ($err) { "`n$err" } else { '' })
+}
+
+function Update-CredYT($e) {
+    if (-not $e) { $ui.TxtYTCredEstado.Text = ''; return }
+    if ($e.credenciales) {
+        $ui.TxtYTCredEstado.Text = "Credenciales de la API guardadas en el servidor ($($e.client_id)). Ya se puede hacer el paso 2. " +
+            'Si quieres cambiarlas por las de otro proyecto, pega las nuevas en el paso 1.'
+        $ui.TxtYTCredEstado.Foreground = Brush '#81C995'
+    } else {
+        $ui.TxtYTCredEstado.Text = 'El servidor todavía no tiene credenciales de la API de YouTube: sin ellas no se puede subir nada. Haz el paso 1.'
+        $ui.TxtYTCredEstado.Foreground = Brush '#F2C46D'
+    }
+}
+
+function Save-CredYT {
+    $id = $ui.YTClientId.Text.Trim()
+    $secreto = $ui.YTClientSecret.Password.Trim()
+    if ($id.StartsWith('{')) {
+        # Se ha pegado el JSON que descarga Google: se sacan de ahí los dos datos.
+        try {
+            $j = $id | ConvertFrom-Json
+            $c = if ($j.installed) { $j.installed } elseif ($j.web) { $j.web } else { $j }
+            $id = [string]$c.client_id; $secreto = [string]$c.client_secret
+        } catch { $ui.TxtYTCredEstado.Text = 'El JSON pegado no es válido.'; $ui.TxtYTCredEstado.Foreground = Brush '#F28B82'; return }
+    }
+    $ui.BtnYTGuardarCred.IsEnabled = $false
+    $script:ytMensajeCredHasta = (Get-Date).AddSeconds(20)
+    Invoke-YT 'POST' '/api/credenciales' @{ client_id = $id; client_secret = $secreto } {
+        param($res, $err)
+        $ui.BtnYTGuardarCred.IsEnabled = $true
+        if ($err) {
+            if (Test-CaducadoYT) { return }
+            $ui.TxtYTCredEstado.Text = "No se han guardado: $err"; $ui.TxtYTCredEstado.Foreground = Brush '#F28B82'; return
+        }
+        $ui.YTClientId.Text = ''; $ui.YTClientSecret.Password = ''
+        $ui.TxtYTCredEstado.Text = "Guardadas en el servidor ($($res.client_id)). Ahora el paso 2: «Conectar con Google»."
+        $ui.TxtYTCredEstado.Foreground = Brush '#81C995'
+        Get-EstadoYT
     }
 }
 
@@ -2322,6 +2433,8 @@ function Update-EstadoYT($e) {
         $ui.TxtYTCanal.Text = 'YouTube sin conectar'; $ui.ChipYTCanal.Background = Brush '#4A2323'
     }
     $ui.BtnYTConectar.Visibility = if ($e.conectando) { 'Collapsed' } else { 'Visible' }
+    # Un mensaje recién puesto por «Guardar» se deja leer 20 s antes de refrescarlo.
+    if ($ui.YTCred.Visibility -eq 'Visible' -and -not $ui.YTClientId.IsKeyboardFocusWithin -and (Get-Date) -gt $script:ytMensajeCredHasta) { Update-CredYT $e }
     $ui.BtnYTConectar.Content = if ($e.youtube_conectado) { 'Cambiar cuenta' } else { 'Conectar YouTube' }
 
     if ($e.codigo) {
@@ -2333,8 +2446,14 @@ function Update-EstadoYT($e) {
         $ui.YTCodigoCaja.Visibility = 'Visible'
         $ui.YTAviso.Visibility = 'Visible'
     } elseif ($e.error_conexion -and -not $e.youtube_conectado) {
-        $ui.TxtYTAviso.Text = "No se ha podido conectar con YouTube: $($e.error_conexion)"
+        $ui.TxtYTAviso.Text = if ($e.credenciales) { "No se ha podido conectar con YouTube: $($e.error_conexion)" } else {
+            'Faltan las credenciales de la API de YouTube. Pulsa «Conectar YouTube» para ponerlas.' }
         $ui.TxtYTAviso.Foreground = Brush '#F28B82'
+        $ui.YTCodigoCaja.Visibility = 'Collapsed'
+        $ui.YTAviso.Visibility = 'Visible'
+    } elseif (-not $e.credenciales -and $ui.YTCred.Visibility -ne 'Visible') {
+        $ui.TxtYTAviso.Text = 'Faltan las credenciales de la API de YouTube: sin ellas no se puede subir nada. Pulsa «Conectar YouTube» para ponerlas.'
+        $ui.TxtYTAviso.Foreground = Brush '#F2C46D'
         $ui.YTCodigoCaja.Visibility = 'Collapsed'
         $ui.YTAviso.Visibility = 'Visible'
     } else {
@@ -2402,7 +2521,16 @@ function Set-Modo([string]$modo) {
     $ui.PanelYT.Visibility = if ($yt) { 'Visible' } else { 'Collapsed' }
     # En modo YouTube, lo del lateral que es de Valora (conversaciones, carpetas, fichas, agy) no pinta nada.
     foreach ($n in 'LateralArriba', 'LateralMedio', 'LateralAbajo') { $ui[$n].Visibility = if ($yt) { 'Collapsed' } else { 'Visible' } }
-    $ui.BtnModoYT.Background = Brush $(if ($yt) { '#3A3A3A' } else { '#00000000' })
+    # Cada modo con su cara: en YouTube el logo, el título y el color pasan a rojo.
+    $ui.LogoTexto.Text = if ($yt) { 'YouTube' } else { 'Valora' }
+    $ui.LogoFondo.Background = Brush $(if ($yt) { '#E62117' } else { '#ECECEC' })
+    $ui.LogoLetra.FontFamily = if ($yt) { 'Segoe MDL2 Assets' } else { 'Segoe UI' }
+    $ui.LogoLetra.Text = if ($yt) { [string][char]0xE768 } else { 'V' }
+    $ui.LogoLetra.FontSize = if ($yt) { 13 } else { 17 }
+    $ui.LogoLetra.Foreground = Brush $(if ($yt) { '#FFFFFF' } else { '#171717' })
+    $ui.Lateral.Background = Brush $(if ($yt) { '#1A1414' } else { '#171717' })
+    $win.Title = if ($yt) { 'Valora · YouTube' } else { 'Valora' }
+    $ui.BtnModoYT.Background = Brush $(if ($yt) { '#C4302B' } else { '#00000000' })
     $ui.BtnModoValora.Background = Brush $(if ($yt) { '#00000000' } else { '#3A3A3A' })
     if ($yt) {
         if (-not (Get-TokenYT)) {
@@ -2440,11 +2568,22 @@ $ui.BtnYTActualizar.Add_Click({
     Invoke-YT 'POST' '/api/actualizar' @{} { param($res, $err) if ($err) { Show-ErrorRedYT $err } else { Get-EstadoYT } }
 })
 $ui.BtnYTConectar.Add_Click({
-    $ui.BtnYTConectar.IsEnabled = $false
+    if ($ui.YTCred.Visibility -eq 'Visible') { $ui.YTCred.Visibility = 'Collapsed'; return }
+    Update-CredYT $script:ytEstado
+    $ui.YTCred.Visibility = 'Visible'
+})
+$ui.BtnYTCredCerrar.Add_Click({ $ui.YTCred.Visibility = 'Collapsed' })
+foreach ($n in 'BtnYTPaso1', 'BtnYTPaso2', 'BtnYTPaso3', 'BtnYTPaso4') { $ui[$n].Add_Click({ Start-Process ([string]$this.Tag) }) }
+$ui.BtnYTGuardarCred.Add_Click({ Save-CredYT })
+$ui.BtnYTLoginGoogle.Add_Click({
+    $ui.BtnYTLoginGoogle.IsEnabled = $false
     Invoke-YT 'POST' '/api/conectar' @{} {
         param($res, $err)
-        $ui.BtnYTConectar.IsEnabled = $true
-        if ($err) { Show-ErrorRedYT $err } else { Get-EstadoYT }
+        $ui.BtnYTLoginGoogle.IsEnabled = $true
+        if ($err) { Show-ErrorRedYT $err; return }
+        if ($res.ok) { $ui.YTCred.Visibility = 'Collapsed' }
+        else { $ui.TxtYTCredEstado.Text = "Google no deja conectar: $($res.error)"; $ui.TxtYTCredEstado.Foreground = Brush '#F28B82' }
+        Get-EstadoYT
     }
 })
 $ui.BtnYTCopiar.Add_Click({ if ($ui.TxtYTCodigo.Text) { [System.Windows.Clipboard]::SetText($ui.TxtYTCodigo.Text); Set-Estado 'Código copiado.' '#81C995' } })
@@ -2551,8 +2690,16 @@ $timerIcono.Add_Tick({
     } catch { Write-LogUpd ('no se pudo instalar el icono: ' + $_.Exception.Message) }
 })
 
+# Solo se actualiza la Valora instalada. Una copia que se ejecute desde otra carpeta (pruebas)
+# no se toca ni apunta versiones en version.json: si no, la instalada se quedaría con el
+# fichero viejo creyendo que ya tiene la versión nueva.
+$RutaInstalada = Join-Path $ConfigDir 'Valora.ps1'
+$script:esInstalada = [string]::Equals([IO.Path]::GetFullPath($RutaValora), [IO.Path]::GetFullPath($RutaInstalada), [StringComparison]::OrdinalIgnoreCase)
+
+function Get-HuellaCodigo { try { return (Get-FileHash $RutaValora -Algorithm SHA256).Hash } catch { return '' } }
+
 function Start-BuscarActualizacion {
-    if ($RepoValora -eq '__REPO__' -or $script:upd) { return }
+    if ($RepoValora -eq '__REPO__' -or $script:upd -or -not $script:esInstalada) { return }
     try {
         # Se lee la rama main por el protocolo de git: refleja un push al instante y no gasta el
         # límite de consultas de la API (60 por hora y por IP), así que se puede mirar cada 20 s.
@@ -2603,7 +2750,7 @@ $timerAplicar.Add_Tick({
     if (-not $script:pendienteReinicio) { $timerAplicar.Stop(); return }
     if ($script:proc -or $script:loginProc -or $ui.Login.Visibility -eq 'Visible' -or
         $ui.PanelConfirmar.Visibility -eq 'Visible' -or $ui.PanelFC.Visibility -eq 'Visible' -or
-        $script:ytSel.Count -gt 0 -or $ui.YTAviso.Visibility -eq 'Visible' -or $ui.YTClave.Password -or
+        $script:ytSel.Count -gt 0 -or $ui.YTAviso.Visibility -eq 'Visible' -or $ui.YTClave.Password -or $ui.YTCred.Visibility -eq 'Visible' -or
         ((Get-Date) - $script:ultimaEscritura).TotalSeconds -lt 15) { return }
     $timerAplicar.Stop()
     Restart-Valora
@@ -2641,6 +2788,7 @@ $timerUpd.Add_Tick({
             [IO.File]::WriteAllText($RutaValora, $codigo, (New-Object System.Text.UTF8Encoding($true)))
             $v = Get-VersionLocal
             $v | Add-Member -NotePropertyName sha -NotePropertyValue $u.sha -Force
+            $v | Add-Member -NotePropertyName huella -NotePropertyValue (Get-HuellaCodigo) -Force
             Save-VersionLocal $v
         } catch { Write-LogUpd ('no se pudo escribir la versión nueva: ' + $_.Exception.Message); return }
         Write-LogUpd "aplicada la versión $($u.sha)"
@@ -2699,6 +2847,16 @@ $win.Add_Closing({
 })
 
 # ---------- Arranque ----------
+# Si el fichero no es el que se apuntó al actualizar (lo cambió otra cosa), se olvida la versión
+# apuntada para que se vuelva a bajar la buena.
+if ($script:esInstalada) {
+    $vh = Get-VersionLocal
+    if ($vh.huella -and $vh.huella -ne (Get-HuellaCodigo)) {
+        Write-LogUpd "el fichero no coincide con la versión $($vh.sha) apuntada; se volverá a bajar"
+        $vh | Add-Member -NotePropertyName sha -NotePropertyValue '' -Force
+        Save-VersionLocal $vh
+    }
+}
 $ui.TxtWs.Text = $script:workspace; $ui.TxtWs.ToolTip = $script:workspace
 $ui.ChkAuto.IsChecked = $cfg.auto
 Update-Adjuntos; Update-Carpetas; Update-Inicio; Update-ListaConv
@@ -2725,7 +2883,7 @@ if (Test-Path $ReanudarFile) {
     } catch {}
 }
 if ($cfg.modo -eq 'youtube') { Set-Modo 'youtube' }
-$ui.TxtVersion.Text = 'Versión ' + $(if ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
+$ui.TxtVersion.Text = 'Versión ' + $(if (-not $script:esInstalada) { 'de pruebas (no se actualiza)' } elseif ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
 if ($script:relevo) { $ui.TxtVersion.Text += ' · recién actualizada ✓'; $ui.TxtVersion.Foreground = Brush '#81C995' }
 $ui.TxtCuenta.Text = 'Comprobando…'; $ui.BtnLogout.Visibility = 'Collapsed'
 if ($script:Agy) {
