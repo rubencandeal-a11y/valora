@@ -42,7 +42,7 @@ function Quote-Arg([string]$s) {
 }
 
 function Load-Config {
-    $cfg = @{ workspace = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tasaciones'); auto = $true; carpetas = @(); fcEntorno = 'PRE'; fcClaves = @{}; ytUrl = ''; ytUsuario = ''; ytToken = $null; modo = 'valora' }
+    $cfg = @{ workspace = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tasaciones'); auto = $true; carpetas = @(); fcEntorno = 'PRE'; fcClaves = @{}; ytUrl = ''; ytUsuario = ''; ytToken = $null; modo = 'valora'; estilo = '' }
     if (Test-Path $ConfigFile) {
         try {
             $j = Get-Content $ConfigFile -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -50,7 +50,7 @@ function Load-Config {
             if ($null -ne $j.auto) { $cfg.auto = [bool]$j.auto }
             if ($j.carpetas) { $cfg.carpetas = @($j.carpetas) }
             if ($j.fcEntorno) { $cfg.fcEntorno = $j.fcEntorno }
-            foreach ($k in 'ytUrl', 'ytUsuario', 'ytToken', 'modo') { if ($j.$k) { $cfg[$k] = $j.$k } }
+            foreach ($k in 'ytUrl', 'ytUsuario', 'ytToken', 'modo', 'estilo') { if ($j.$k) { $cfg[$k] = $j.$k } }
             if ($j.fcClaves) { foreach ($pr in $j.fcClaves.PSObject.Properties) { $cfg.fcClaves[$pr.Name] = $pr.Value } }
         } catch {}
     }
@@ -59,7 +59,7 @@ function Load-Config {
 
 function Save-Config {
     @{ workspace = $script:workspace; auto = [bool]$ui.ChkAuto.IsChecked; carpetas = @($script:carpetas); fcEntorno = $script:fcEntorno; fcClaves = $script:fcClaves
-       ytUrl = $script:ytUrl; ytUsuario = $script:ytUsuario; ytToken = $script:ytToken; modo = $script:modo } |
+       ytUrl = $script:ytUrl; ytUsuario = $script:ytUsuario; ytToken = $script:ytToken; modo = $script:modo; estilo = $script:estilo } |
         ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
 }
 
@@ -77,6 +77,7 @@ $script:ytUrl = $cfg.ytUrl            # web de resubida de YouTube (vacía: la d
 $script:ytUsuario = $cfg.ytUsuario
 $script:ytToken = $cfg.ytToken        # token de esa web, cifrado con DPAPI como las claves de Foticos Collection
 $script:modo = 'valora'               # 'valora' o 'youtube'; se aplica al arrancar
+$script:estilo = [string]$cfg.estilo  # cómo quiere el usuario que responda; va delante de cada pregunta
 
 $script:proc = $null
 $script:outTask = $null
@@ -215,6 +216,10 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <TextBlock x:Name="LogoLetra" Text="V" Foreground="#171717" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <TextBlock x:Name="LogoTexto" Text="Valora" FontSize="18" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+            <Button x:Name="BtnEstilo" Style="{StaticResource Plano}" Padding="6,4" Margin="6,0,0,0" VerticalAlignment="Center"
+                    ToolTip="Cómo quieres que te responda Valora">
+              <TextBlock x:Name="IcoEstilo" FontFamily="Segoe MDL2 Assets" Text="&#xE771;" FontSize="13" Foreground="#8E8E8E"/>
+            </Button>
             <Button x:Name="BtnReiniciarTitulo" Margin="10,0,0,0" VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed"
                     ToolTip="Hay una versión nueva de Valora. Se aplica sola en cuanto no estés usando la ventana; pulsa para aplicarla ya.">
               <Button.Template>
@@ -632,6 +637,36 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
       </DockPanel>
     </Grid>
 
+    <!-- Cómo quiere el usuario que responda Valora -->
+    <Grid x:Name="PanelEstilo" Grid.ColumnSpan="2" Background="#CC121212" Visibility="Collapsed" Panel.ZIndex="25">
+      <Border Width="620" Background="#262626" CornerRadius="18" Padding="24,20" BorderBrush="#3A3A3A" BorderThickness="1"
+              VerticalAlignment="Center" HorizontalAlignment="Center">
+        <StackPanel>
+          <TextBlock Text="Cómo quieres que te responda" FontSize="20" FontWeight="SemiBold"/>
+          <TextBlock Text="Se aplica a todas tus preguntas, en todas las conversaciones." Foreground="#8E8E8E" FontSize="13" Margin="0,4,0,12"/>
+          <WrapPanel x:Name="AtajosEstilo" Margin="0,0,0,10">
+            <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Responde breve y al grano, sin introducciones ni despedidas." Content="Breve y directo"/>
+            <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Explica con detalle y razona cada conclusión." Content="Detallado"/>
+            <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Usa tablas cuando compares o enumeres datos." Content="Con tablas"/>
+            <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Usa un tono profesional y formal, de informe de tasación." Content="Tono formal"/>
+            <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Termina siempre con un precio estimado en euros (mínimo y máximo) y en qué te basas." Content="Siempre con precio"/>
+          </WrapPanel>
+          <Border Background="#1A1A1A" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,4">
+            <TextBox x:Name="TxtEstilo" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" FontSize="14"
+                     TextWrapping="Wrap" AcceptsReturn="True" MinHeight="140" MaxHeight="300" VerticalScrollBarVisibility="Auto" Padding="0,6"/>
+          </Border>
+          <Grid Margin="0,14,0,0">
+            <Button x:Name="BtnEstiloBorrar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="10,8" HorizontalAlignment="Left" Content="Dejarlo como estaba"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+              <Button x:Name="BtnEstiloCancelar" Style="{StaticResource Plano}" Foreground="#ECECEC" Padding="14,8" Content="Cancelar"/>
+              <Button x:Name="BtnEstiloGuardar" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="16,8"
+                      Margin="8,0,0,0" FontWeight="SemiBold" Content="Guardar"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Grid>
+
     <!-- Fichas por tasar de Foticos Collection -->
     <Grid x:Name="PanelFC" Grid.ColumnSpan="2" Background="#CC121212" Visibility="Collapsed" Panel.ZIndex="20">
       <Border Width="760" MaxHeight="680" Background="#262626" CornerRadius="18" Padding="24,20" BorderBrush="#3A3A3A" BorderThickness="1"
@@ -795,7 +830,8 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'YTPrivacidad','BtnYTResubir','YTLista','TxtYTCola','YTCola','LateralArriba','LateralMedio','LateralAbajo',
                'YTCred','BtnYTCredCerrar','TxtYTCredEstado','BtnYTPaso2','BtnYTPaso4','YTClientId',
                'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
-               'Lateral','LogoFondo','LogoLetra','LogoTexto') {
+               'Lateral','LogoFondo','LogoLetra','LogoTexto',
+               'BtnEstilo','IcoEstilo','PanelEstilo','AtajosEstilo','TxtEstilo','BtnEstiloBorrar','BtnEstiloCancelar','BtnEstiloGuardar') {
     $ui[$n] = $win.FindName($n)
 }
 $icono = Join-Path $ConfigDir 'valora.ico'
@@ -1811,6 +1847,9 @@ function Enviar([string]$instrucciones = '') {
 
     $mensaje = $texto
     if ($instrucciones) { $mensaje = $instrucciones + "`n`n" + $texto }
+    if ($script:estilo.Trim()) {
+        $mensaje = "Cómo quiere el usuario que le respondas (síguelo siempre):`n" + $script:estilo.Trim() + "`n`n" + $mensaje
+    }
     if ($adjuntos.Count -gt 0) {
         $mensaje += "`n`nArchivos adjuntos (ábrelos y míralos):`n" + (($adjuntos | ForEach-Object { "- $_" }) -join "`n")
     }
@@ -1948,6 +1987,37 @@ $ui.Prompt.Add_PreviewKeyDown({
         }
     } catch { Set-Estado ('No se ha podido pegar: ' + $_.Exception.Message) '#F28B82' }
 })
+
+# ---------- Cómo quiere el usuario que responda ----------
+function Update-IcoEstilo {
+    $ui.IcoEstilo.Foreground = Brush $(if ($script:estilo.Trim()) { '#81C995' } else { '#8E8E8E' })
+    $ui.BtnEstilo.ToolTip = if ($script:estilo.Trim()) { "Cómo te responde Valora:`n" + $script:estilo.Trim() } else { 'Cómo quieres que te responda Valora' }
+}
+$ui.BtnEstilo.Add_Click({
+    $ui.TxtEstilo.Text = $script:estilo
+    $ui.PanelEstilo.Visibility = 'Visible'
+    $ui.TxtEstilo.Focus() | Out-Null
+    $ui.TxtEstilo.CaretIndex = $ui.TxtEstilo.Text.Length
+})
+foreach ($b in $ui.AtajosEstilo.Children) {
+    $b.Add_Click({
+        $actual = $ui.TxtEstilo.Text.TrimEnd()
+        if ($actual -notmatch [regex]::Escape([string]$this.Tag)) {
+            $ui.TxtEstilo.Text = $(if ($actual) { $actual + "`n" } else { '' }) + $this.Tag
+        }
+        $ui.TxtEstilo.CaretIndex = $ui.TxtEstilo.Text.Length
+    })
+}
+$ui.BtnEstiloCancelar.Add_Click({ $ui.PanelEstilo.Visibility = 'Collapsed' })
+$ui.BtnEstiloBorrar.Add_Click({ $ui.TxtEstilo.Text = '' })
+$ui.BtnEstiloGuardar.Add_Click({
+    $script:estilo = $ui.TxtEstilo.Text.Trim()
+    Save-Config
+    Update-IcoEstilo
+    $ui.PanelEstilo.Visibility = 'Collapsed'
+    Set-Estado $(if ($script:estilo) { 'Guardado: las próximas respuestas seguirán tus indicaciones.' } else { 'Valora responderá como siempre.' }) '#81C995'
+})
+Update-IcoEstilo
 
 $ui.BtnAdjuntar.Add_Click({
     $dlg = New-Object Microsoft.Win32.OpenFileDialog
@@ -2824,6 +2894,7 @@ function Set-Modo([string]$modo) {
     foreach ($n in 'LateralArriba', 'LateralMedio', 'LateralAbajo') { $ui[$n].Visibility = if ($yt) { 'Collapsed' } else { 'Visible' } }
     # Cada modo con su cara: en YouTube el logo, el título y el color pasan a rojo.
     $ui.LogoTexto.Text = if ($yt) { 'YouTube' } else { 'Valora' }
+    $ui.BtnEstilo.Visibility = if ($yt) { 'Collapsed' } else { 'Visible' }
     $ui.LogoFondo.Background = Brush $(if ($yt) { '#E62117' } else { '#ECECEC' })
     $ui.LogoLetra.FontFamily = if ($yt) { 'Segoe MDL2 Assets' } else { 'Segoe UI' }
     $ui.LogoLetra.Text = if ($yt) { [string][char]0xE768 } else { 'V' }
@@ -3079,7 +3150,7 @@ $timerAplicar.Interval = [TimeSpan]::FromSeconds(2)
 $timerAplicar.Add_Tick({
     if (-not $script:pendienteReinicio) { $timerAplicar.Stop(); return }
     if ($script:proc -or $script:loginProc -or $ui.Login.Visibility -eq 'Visible' -or
-        $ui.PanelConfirmar.Visibility -eq 'Visible' -or $ui.PanelFC.Visibility -eq 'Visible' -or
+        $ui.PanelConfirmar.Visibility -eq 'Visible' -or $ui.PanelFC.Visibility -eq 'Visible' -or $ui.PanelEstilo.Visibility -eq 'Visible' -or
         $script:ytSel.Count -gt 0 -or ($ui.YTAviso.Visibility -eq 'Visible' -and $ui.YTCodigoCaja.Visibility -eq 'Visible') -or $ui.YTClave.Password -or $ui.YTCred.Visibility -eq 'Visible' -or
         ((Get-Date) - $script:ultimaEscritura).TotalSeconds -lt 15) { return }
     $timerAplicar.Stop()
