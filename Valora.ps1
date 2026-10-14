@@ -96,13 +96,13 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Valora" Width="1180" Height="780" MinWidth="820" MinHeight="520"
-        WindowStartupLocation="CenterScreen" Background="#212121" AllowDrop="True"
-        FontFamily="Segoe UI" FontSize="14" Foreground="#ECECEC">
+        WindowStartupLocation="CenterScreen" Background="#1A1D22" AllowDrop="True"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14" Foreground="#ECE8E1">
   <Window.Resources>
-    <SolidColorBrush x:Key="Sidebar" Color="#171717"/>
+    <SolidColorBrush x:Key="Sidebar" Color="#14161A"/>
 
     <Style x:Key="Plano" TargetType="Button">
-      <Setter Property="Foreground" Value="#ECECEC"/>
+      <Setter Property="Foreground" Value="#ECE8E1"/>
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Padding" Value="10,7"/>
@@ -114,7 +114,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#2A2A2A"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#2A2E36"/></Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -126,11 +126,11 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="b" Background="Transparent" BorderBrush="#3A3A3A" BorderThickness="1" CornerRadius="12" Padding="14,10">
+            <Border x:Name="b" Background="Transparent" BorderBrush="#363C47" BorderThickness="1" CornerRadius="12" Padding="14,10">
               <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#2A2A2A"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#2A2E36"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -161,10 +161,10 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Thumb">
-            <Border x:Name="b" Background="#4A4A4A" CornerRadius="3"/>
+            <Border x:Name="b" Background="#464C57" CornerRadius="3"/>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#6A6A6A"/></Trigger>
-              <Trigger Property="IsDragging" Value="True"><Setter TargetName="b" Property="Background" Value="#7A7A7A"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#6A707B"/></Trigger>
+              <Trigger Property="IsDragging" Value="True"><Setter TargetName="b" Property="Background" Value="#767C87"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -214,22 +214,22 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
     </Style>
 
     <Style x:Key="Seccion" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="#8E8E8E"/>
-      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="Foreground" Value="#767C87"/>
+      <Setter Property="FontSize" Value="12"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Margin" Value="12,18,12,6"/>
+      <Setter Property="Margin" Value="10,20,10,6"/>
     </Style>
 
     <Style x:Key="FilaYT" TargetType="ListViewItem">
-      <Setter Property="Foreground" Value="#ECECEC"/>
+      <Setter Property="Foreground" Value="#ECE8E1"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListViewItem">
-            <Border x:Name="b" Background="Transparent" Padding="0,5" BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+            <Border x:Name="b" Background="Transparent" Padding="0,5" BorderBrush="#2A2E36" BorderThickness="0,0,0,1">
               <GridViewRowPresenter VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#262626"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#252930"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="Background" Value="#4A1E1E"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -237,19 +237,19 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
       </Setter>
       <Style.Triggers>
         <DataTrigger Binding="{Binding Seleccionable}" Value="False">
-          <Setter Property="Foreground" Value="#7A7A7A"/>
+          <Setter Property="Foreground" Value="#767C87"/>
         </DataTrigger>
       </Style.Triggers>
     </Style>
 
     <Style x:Key="CabeceraYT" TargetType="GridViewColumnHeader">
-      <Setter Property="Foreground" Value="#8E8E8E"/>
+      <Setter Property="Foreground" Value="#8C929C"/>
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="GridViewColumnHeader">
-            <Border Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="0,0,0,1" Padding="6,7">
+            <Border Background="#181B20" BorderBrush="#2A2E36" BorderThickness="0,0,0,1" Padding="6,7">
               <ContentPresenter HorizontalAlignment="Left"/>
             </Border>
           </ControlTemplate>
@@ -268,14 +268,14 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
     <Border x:Name="Lateral" Background="{StaticResource Sidebar}">
       <DockPanel Margin="10,14,10,12">
         <StackPanel DockPanel.Dock="Top">
-          <StackPanel Orientation="Horizontal" Margin="10,0,0,14">
-            <Border x:Name="LogoFondo" Width="30" Height="30" CornerRadius="8" Background="#ECECEC">
-              <TextBlock x:Name="LogoLetra" Text="V" Foreground="#171717" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" Margin="10,2,0,16">
+            <Border x:Name="LogoFondo" Width="30" Height="30" CornerRadius="8" Background="#C8A15A">
+              <TextBlock x:Name="LogoLetra" Text="V" Foreground="#14161A" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <TextBlock x:Name="LogoTexto" Text="Valora" FontSize="18" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
             <Button x:Name="BtnEstilo" Style="{StaticResource Plano}" Padding="6,4" Margin="6,0,0,0" VerticalAlignment="Center"
                     ToolTip="Cómo quieres que te responda Valora">
-              <TextBlock x:Name="IcoEstilo" FontFamily="Segoe MDL2 Assets" Text="&#xE771;" FontSize="13" Foreground="#8E8E8E"/>
+              <TextBlock x:Name="IcoEstilo" FontFamily="Segoe MDL2 Assets" Text="&#xE771;" FontSize="13" Foreground="#8C929C"/>
             </Button>
             <Button x:Name="BtnReiniciarTitulo" Margin="10,0,0,0" VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed"
                     ToolTip="Hay una versión nueva de Valora. Se aplica sola en cuanto no estés usando la ventana; pulsa para aplicarla ya.">
@@ -296,9 +296,9 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               </Button.Template>
             </Button>
           </StackPanel>
-          <Border Background="#202020" CornerRadius="10" Padding="3" Margin="2,0,2,12">
+          <Border Background="#20232A" CornerRadius="10" Padding="3" Margin="0,0,0,10">
             <UniformGrid Columns="2">
-              <Button x:Name="BtnModoValora" Style="{StaticResource Plano}" Padding="8,6" HorizontalContentAlignment="Center" Background="#3A3A3A">
+              <Button x:Name="BtnModoValora" Style="{StaticResource Plano}" Padding="8,6" HorizontalContentAlignment="Center" Background="#363C47">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BD;" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
                   <TextBlock Text="Valora"/>
@@ -314,36 +314,36 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             </UniformGrid>
           </Border>
           <StackPanel x:Name="LateralArriba">
-          <Button x:Name="BtnNueva" Style="{StaticResource Plano}">
+          <Button x:Name="BtnNueva" Style="{StaticResource Plano}" Background="#252930" Padding="10,9">
             <StackPanel Orientation="Horizontal">
-              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" VerticalAlignment="Center" Margin="0,0,10,0"/>
+              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" Foreground="#C8A15A" VerticalAlignment="Center" Margin="0,0,10,0"/>
               <TextBlock Text="Nueva conversación"/>
             </StackPanel>
           </Button>
 
           <!-- Carpetas: la de trabajo y las conectadas, en una sola tarjeta -->
-          <TextBlock Text="CARPETAS" Style="{StaticResource Seccion}"/>
-          <Border Background="#202020" CornerRadius="10" Padding="10,6,4,4" Margin="2,0">
+          <TextBlock Text="Carpetas" Style="{StaticResource Seccion}"/>
+          <Border Background="#181B20" BorderBrush="#2A2E36" BorderThickness="1" CornerRadius="10" Padding="9,6,4,4">
             <StackPanel>
               <DockPanel>
                 <Button x:Name="BtnAbrirWs" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Abrir en Explorador">
-                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8A7;" FontSize="12" Foreground="#9A9A9A"/>
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8A7;" FontSize="12" Foreground="#969CA6"/>
                 </Button>
                 <Button x:Name="BtnWs" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Cambiar carpeta de trabajo">
-                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="12" Foreground="#9A9A9A"/>
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="12" Foreground="#969CA6"/>
                 </Button>
-                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" FontSize="13" Foreground="#B4B4B4" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B7;" FontSize="13" Foreground="#ACB1B9" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="De trabajo" Foreground="#7A7A7A" FontSize="10.5"/>
-                  <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" Foreground="#E0E0E0" FontSize="13"/>
+                  <TextBlock Text="De trabajo" Foreground="#767C87" FontSize="10.5"/>
+                  <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" Foreground="#E0DCD4" FontSize="13"/>
                 </StackPanel>
               </DockPanel>
-              <Border Height="1" Background="#2E2E2E" Margin="0,5,6,3"/>
+              <Border Height="1" Background="#2A2E36" Margin="0,5,6,3"/>
               <DockPanel>
                 <Button x:Name="BtnCarpeta" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="6" ToolTip="Conectar carpeta">
-                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="12" Foreground="#9A9A9A"/>
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="12" Foreground="#969CA6"/>
                 </Button>
-                <TextBlock Text="Conectadas" Foreground="#7A7A7A" FontSize="10.5" VerticalAlignment="Center"/>
+                <TextBlock Text="Conectadas" Foreground="#767C87" FontSize="10.5" VerticalAlignment="Center"/>
               </DockPanel>
               <ItemsControl x:Name="ListaCarpetas" Margin="-10,0,0,0"/>
             </StackPanel>
@@ -353,31 +353,31 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
 
         <StackPanel DockPanel.Dock="Bottom">
           <StackPanel x:Name="LateralAbajo">
-          <DockPanel Margin="12,0,2,0">
+          <DockPanel Margin="10,0,0,0">
             <Button x:Name="BtnTerminal" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="8,6" ToolTip="Abrir terminal (agy)">
-              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE756;" FontSize="13" Foreground="#B4B4B4"/>
+              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE756;" FontSize="13" Foreground="#ACB1B9"/>
             </Button>
-            <CheckBox x:Name="ChkAuto" Foreground="#B4B4B4" FontSize="13" VerticalAlignment="Center"
+            <CheckBox x:Name="ChkAuto" Foreground="#ACB1B9" FontSize="13" VerticalAlignment="Center"
                       Content="Modo automático"
                       ToolTip="No pide permisos: agy lee, crea archivos y ejecuta comandos sin preguntar"/>
           </DockPanel>
-          <Border Background="#202020" CornerRadius="8" Padding="12,8" Margin="2,8,2,0">
+          <Border Background="#181B20" BorderBrush="#2A2E36" BorderThickness="1" CornerRadius="10" Padding="10,8" Margin="0,8,0,0">
             <Grid>
               <StackPanel Margin="0,0,70,0">
-                <TextBlock Text="Cuenta de Google" Foreground="#8E8E8E" FontSize="11.5"/>
-                <TextBlock x:Name="TxtCuenta" Text="—" Foreground="#CFCFCF" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="Cuenta de Google" Foreground="#8C929C" FontSize="11.5"/>
+                <TextBlock x:Name="TxtCuenta" Text="—" Foreground="#CDCAC3" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
               </StackPanel>
-              <Button x:Name="BtnLogout" Style="{StaticResource Plano}" Padding="8,4" FontSize="12" Foreground="#B4B4B4"
+              <Button x:Name="BtnLogout" Style="{StaticResource Plano}" Padding="8,4" FontSize="12" Foreground="#ACB1B9"
                       HorizontalAlignment="Right" VerticalAlignment="Center" Content="Cerrar sesión"/>
             </Grid>
           </Border>
           </StackPanel>
-          <TextBlock x:Name="TxtEstado" Foreground="#8E8E8E" FontSize="12" TextWrapping="Wrap" Margin="12,10,8,0"/>
-          <TextBlock x:Name="TxtVersion" Foreground="#5A5A5A" FontSize="11" Margin="12,4,8,0"/>
+          <TextBlock x:Name="TxtEstado" Foreground="#8C929C" FontSize="12" TextWrapping="Wrap" Margin="10,10,8,0"/>
+          <TextBlock x:Name="TxtVersion" Foreground="#5A606B" FontSize="11" Margin="10,4,8,0"/>
         </StackPanel>
         <DockPanel x:Name="LateralMedio" Margin="0,4,0,8">
           <StackPanel DockPanel.Dock="Top">
-            <TextBlock Text="FOTICOS COLLECTION" Style="{StaticResource Seccion}"/>
+            <TextBlock Text="Foticos Collection" Style="{StaticResource Seccion}"/>
             <Button x:Name="BtnFichas" Style="{StaticResource Plano}">
               <StackPanel Orientation="Horizontal">
                 <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8A1;" VerticalAlignment="Center" Margin="0,0,10,0"/>
@@ -389,15 +389,15 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             </Button>
           </StackPanel>
           <Grid DockPanel.Dock="Top">
-            <TextBlock Text="CONVERSACIONES" Style="{StaticResource Seccion}"/>
-            <TextBlock x:Name="TxtNumConv" Foreground="#5A5A5A" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,6"/>
+            <TextBlock Text="Conversaciones" Style="{StaticResource Seccion}"/>
+            <TextBlock x:Name="TxtNumConv" Foreground="#5A606B" FontSize="11.5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,6"/>
           </Grid>
-          <Border x:Name="CajaBuscarConv" DockPanel.Dock="Top" Background="#202020" CornerRadius="8" Margin="4,0,4,6" Padding="8,0" Visibility="Collapsed">
+          <Border x:Name="CajaBuscarConv" DockPanel.Dock="Top" Background="#181B20" BorderBrush="#2A2E36" BorderThickness="1" CornerRadius="8" Margin="0,0,0,8" Padding="9,0" Visibility="Collapsed">
             <Grid>
-              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE721;" FontSize="11" Foreground="#7A7A7A" VerticalAlignment="Center"/>
-              <TextBox x:Name="BuscarConv" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC"
+              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE721;" FontSize="11" Foreground="#767C87" VerticalAlignment="Center"/>
+              <TextBox x:Name="BuscarConv" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1"
                        FontSize="12.5" Padding="0,6" Margin="18,0,0,0" VerticalContentAlignment="Center"/>
-              <TextBlock x:Name="BuscarConvPista" Text="Buscar conversación" Foreground="#6A6A6A" FontSize="12.5" Margin="20,0,0,0"
+              <TextBlock x:Name="BuscarConvPista" Text="Buscar conversación" Foreground="#6A707B" FontSize="12.5" Margin="20,0,0,0"
                          VerticalAlignment="Center" IsHitTestVisible="False"/>
             </Grid>
           </Border>
@@ -431,19 +431,19 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
       <!-- Pantalla de inicio -->
       <StackPanel x:Name="Inicio" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="680">
         <TextBlock Text="Hola 👋 ¿qué tasamos hoy?" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-        <TextBlock Text="Arrastra fotos, documentos o carpetas a la ventana, o abre una ficha de «Fichas por tasar»." Foreground="#8E8E8E" HorizontalAlignment="Center" Margin="0,0,0,26"/>
+        <TextBlock Text="Arrastra fotos, documentos o carpetas a la ventana, o abre una ficha de «Fichas por tasar»." Foreground="#8C929C" HorizontalAlignment="Center" Margin="0,0,0,26"/>
         <UniformGrid x:Name="Sugerencias" Columns="2">
           <Button Style="{StaticResource Chip}" Margin="5" Tag="Mira las fotos adjuntas y haz un informe de tasación del inmueble: estado, superficie aproximada, calidades, desperfectos y una estimación de valor razonada.">
-            <StackPanel><TextBlock Text="Tasar un inmueble" FontWeight="SemiBold"/><TextBlock Text="a partir de las fotos adjuntas" Foreground="#8E8E8E" FontSize="12.5"/></StackPanel>
+            <StackPanel><TextBlock Text="Tasar un inmueble" FontWeight="SemiBold"/><TextBlock Text="a partir de las fotos adjuntas" Foreground="#8C929C" FontSize="12.5"/></StackPanel>
           </Button>
           <Button Style="{StaticResource Chip}" Margin="5" Tag="Revisa la carpeta conectada y dime qué hay: tipos de archivo, de qué trata cada uno y qué falta.">
-            <StackPanel><TextBlock Text="Revisar una carpeta" FontWeight="SemiBold"/><TextBlock Text="qué hay y qué falta" Foreground="#8E8E8E" FontSize="12.5"/></StackPanel>
+            <StackPanel><TextBlock Text="Revisar una carpeta" FontWeight="SemiBold"/><TextBlock Text="qué hay y qué falta" Foreground="#8C929C" FontSize="12.5"/></StackPanel>
           </Button>
           <Button Style="{StaticResource Chip}" Margin="5" Tag="Con lo que hemos visto, crea un informe en formato Word (.docx) en la carpeta de trabajo, con fotos y conclusiones.">
-            <StackPanel><TextBlock Text="Crear un informe Word" FontWeight="SemiBold"/><TextBlock Text="en la carpeta de trabajo" Foreground="#8E8E8E" FontSize="12.5"/></StackPanel>
+            <StackPanel><TextBlock Text="Crear un informe Word" FontWeight="SemiBold"/><TextBlock Text="en la carpeta de trabajo" Foreground="#8C929C" FontSize="12.5"/></StackPanel>
           </Button>
           <Button Style="{StaticResource Chip}" Margin="5" Tag="Compara las fotos adjuntas y dime las diferencias de estado entre ellas.">
-            <StackPanel><TextBlock Text="Comparar fotos" FontWeight="SemiBold"/><TextBlock Text="diferencias de estado" Foreground="#8E8E8E" FontSize="12.5"/></StackPanel>
+            <StackPanel><TextBlock Text="Comparar fotos" FontWeight="SemiBold"/><TextBlock Text="diferencias de estado" Foreground="#8C929C" FontSize="12.5"/></StackPanel>
           </Button>
         </UniformGrid>
       </StackPanel>
@@ -466,17 +466,17 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <Border x:Name="BarraEntorno" CornerRadius="6" Padding="6,1" Background="#8A5A12" VerticalAlignment="Center" Margin="0,0,10,0">
                 <TextBlock x:Name="TxtBarraEntorno" Text="PRE" FontSize="10.5" FontWeight="Bold" Foreground="White"/>
               </Border>
-              <TextBlock x:Name="TxtBarraFicha" Foreground="#ECECEC" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
-              <TextBlock x:Name="TxtBarraEstado" Foreground="#8E8E8E" FontSize="12.5" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              <TextBlock x:Name="TxtBarraFicha" Foreground="#ECE8E1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+              <TextBlock x:Name="TxtBarraEstado" Foreground="#8C929C" FontSize="12.5" VerticalAlignment="Center" Margin="12,0,0,0"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-              <Button x:Name="BtnAbrirFicha" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="10,5" FontSize="12.5" Content="Abrir en Foticos Collection"/>
+              <Button x:Name="BtnAbrirFicha" Style="{StaticResource Plano}" Foreground="#ACB1B9" Padding="10,5" FontSize="12.5" Content="Abrir en Foticos Collection"/>
               <Button x:Name="BtnRevisarEnviar" Style="{StaticResource Plano}" Background="#2E7D5A" Foreground="White" Padding="14,6"
                       FontWeight="SemiBold" Margin="6,0,0,0" Content="Revisar y enviar tasación" IsEnabled="False"/>
             </StackPanel>
           </Grid>
         </Border>
-        <Border Grid.Row="1" CornerRadius="22" Background="#2F2F2F" Padding="10,8,10,8">
+        <Border Grid.Row="1" CornerRadius="22" Background="#2C313A" Padding="10,8,10,8">
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto"/>
@@ -490,23 +490,23 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                 <ColumnDefinition Width="Auto"/>
               </Grid.ColumnDefinitions>
               <Button x:Name="BtnAdjuntar" Style="{StaticResource Redondo}" Background="Transparent" VerticalAlignment="Bottom" ToolTip="Adjuntar archivos">
-                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE723;" FontSize="16" Foreground="#CFCFCF"/>
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE723;" FontSize="16" Foreground="#CDCAC3"/>
               </Button>
               <Grid Grid.Column="1" Margin="6,0">
-                <TextBox x:Name="Prompt" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC"
+                <TextBox x:Name="Prompt" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1"
                          FontSize="15" TextWrapping="Wrap" AcceptsReturn="False" MaxHeight="200" MinHeight="36"
                          VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Center" Padding="2,8"/>
-                <TextBlock x:Name="Placeholder" Text="Pregunta lo que quieras" Foreground="#8E8E8E" FontSize="15"
+                <TextBlock x:Name="Placeholder" Text="Pregunta lo que quieras" Foreground="#8C929C" FontSize="15"
                            IsHitTestVisible="False" VerticalAlignment="Center" Margin="5,0"/>
               </Grid>
-              <Button x:Name="BtnEnviar" Grid.Column="2" Style="{StaticResource Redondo}" Background="#ECECEC" VerticalAlignment="Bottom" ToolTip="Enviar (Enter)">
-                <TextBlock x:Name="IcoEnviar" FontFamily="Segoe MDL2 Assets" Text="&#xE74A;" FontSize="16" Foreground="#171717" FontWeight="Bold"/>
+              <Button x:Name="BtnEnviar" Grid.Column="2" Style="{StaticResource Redondo}" Background="#C8A15A" VerticalAlignment="Bottom" ToolTip="Enviar (Enter)">
+                <TextBlock x:Name="IcoEnviar" FontFamily="Segoe MDL2 Assets" Text="&#xE74A;" FontSize="16" Foreground="#14161A" FontWeight="Bold"/>
               </Button>
             </Grid>
           </Grid>
         </Border>
         <TextBlock Grid.Row="2" Text="Enter envía · Shift+Enter nueva línea · Valora puede equivocarse: revisa lo importante."
-                   Foreground="#6E6E6E" FontSize="11.5" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                   Foreground="#6A707B" FontSize="11.5" HorizontalAlignment="Center" Margin="0,8,0,0"/>
       </Grid>
     </Grid>
 
@@ -516,9 +516,9 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
         <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
           <StackPanel>
             <TextBlock Text="Resubir vídeos de YouTube" FontSize="20" FontWeight="SemiBold"/>
-            <TextBlock x:Name="TxtYTResumen" Foreground="#8E8E8E" FontSize="12.5" Margin="0,2,0,0"/>
+            <TextBlock x:Name="TxtYTResumen" Foreground="#8C929C" FontSize="12.5" Margin="0,2,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-              <Border x:Name="ChipYTServidor" CornerRadius="10" Padding="10,4" Background="#3A3A3A" VerticalAlignment="Center" Margin="0,0,6,0">
+              <Border x:Name="ChipYTServidor" CornerRadius="10" Padding="10,4" Background="#363C47" VerticalAlignment="Center" Margin="0,0,6,0">
                 <TextBlock x:Name="TxtYTServidorChip" Text="Servidor…" FontSize="12.5" Foreground="White"/>
               </Border>
               <Border x:Name="ChipYTCanal" CornerRadius="10" Padding="10,4" Background="#4A2323" VerticalAlignment="Center">
@@ -527,11 +527,11 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             </StackPanel>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-            <Button x:Name="BtnYTConectar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Margin="6,0,0,0" Content="Conectar YouTube"
+            <Button x:Name="BtnYTConectar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Margin="6,0,0,0" Content="Conectar YouTube"
                     ToolTip="Entrar con la cuenta de Google dueña del canal al que se suben los vídeos"/>
-            <Button x:Name="BtnYTActualizar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Actualizar listado"
+            <Button x:Name="BtnYTActualizar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Actualizar listado"
                     ToolTip="Vuelve a leer la lista de vídeos del canal"/>
-            <Button x:Name="BtnYTServidor" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Servidor"
+            <Button x:Name="BtnYTServidor" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Servidor"
                     ToolTip="Dirección de la web, usuario y contraseña"/>
           </StackPanel>
         </Grid>
@@ -541,12 +541,12 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
           <TextBlock x:Name="TxtYTTrabajo" FontSize="13" TextWrapping="Wrap"/>
         </Border>
 
-        <Border x:Name="YTServidor" DockPanel.Dock="Top" Background="#1E1E1E" CornerRadius="12" Padding="14,12" Margin="0,0,0,12" Visibility="Collapsed">
+        <Border x:Name="YTServidor" DockPanel.Dock="Top" Background="#1C1F25" CornerRadius="12" Padding="14,12" Margin="0,0,0,12" Visibility="Collapsed">
           <StackPanel>
             <TextBlock Text="Conexión con la web de resubida" FontWeight="SemiBold" Margin="0,0,0,8"/>
-            <TextBlock Text="Dirección de la web (te la da Rubén; en su propio PC se puede dejar vacía):" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
-            <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2" Margin="0,0,0,8">
-              <TextBox x:Name="YTUrl" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+            <TextBlock Text="Dirección de la web (te la da Rubén; en su propio PC se puede dejar vacía):" Foreground="#ACB1B9" FontSize="12.5" Margin="0,0,0,4"/>
+            <Border Background="#121418" CornerRadius="8" BorderBrush="#363C47" BorderThickness="1" Padding="8,2" Margin="0,0,0,8">
+              <TextBox x:Name="YTUrl" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" Padding="0,6"/>
             </Border>
             <Grid>
               <Grid.ColumnDefinitions>
@@ -555,26 +555,26 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                 <ColumnDefinition Width="Auto"/>
               </Grid.ColumnDefinitions>
               <StackPanel Margin="0,0,8,0">
-                <TextBlock Text="Usuario" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
-                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
-                  <TextBox x:Name="YTUsuario" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+                <TextBlock Text="Usuario" Foreground="#ACB1B9" FontSize="12.5" Margin="0,0,0,4"/>
+                <Border Background="#121418" CornerRadius="8" BorderBrush="#363C47" BorderThickness="1" Padding="8,2">
+                  <TextBox x:Name="YTUsuario" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" Padding="0,6"/>
                 </Border>
               </StackPanel>
               <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                <TextBlock Text="Contraseña" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
-                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
-                  <PasswordBox x:Name="YTClave" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+                <TextBlock Text="Contraseña" Foreground="#ACB1B9" FontSize="12.5" Margin="0,0,0,4"/>
+                <Border Background="#121418" CornerRadius="8" BorderBrush="#363C47" BorderThickness="1" Padding="8,2">
+                  <PasswordBox x:Name="YTClave" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" Padding="0,6"/>
                 </Border>
               </StackPanel>
-              <Button x:Name="BtnYTEntrar" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717"
+              <Button x:Name="BtnYTEntrar" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECE8E1" Foreground="#14161A"
                       Padding="16,7" FontWeight="SemiBold" VerticalAlignment="Bottom" Content="Entrar"/>
             </Grid>
-            <TextBlock x:Name="TxtYTServidorEstado" Foreground="#8E8E8E" FontSize="12.5" Margin="0,8,0,0" TextWrapping="Wrap"
+            <TextBlock x:Name="TxtYTServidorEstado" Foreground="#8C929C" FontSize="12.5" Margin="0,8,0,0" TextWrapping="Wrap"
                        Text="Valora guarda la sesión cifrada para tu usuario de Windows: solo hay que entrar una vez."/>
           </StackPanel>
         </Border>
 
-        <Border x:Name="YTCred" DockPanel.Dock="Top" Background="#1E1E1E" CornerRadius="12" Padding="14,12" Margin="0,0,0,12" Visibility="Collapsed">
+        <Border x:Name="YTCred" DockPanel.Dock="Top" Background="#1C1F25" CornerRadius="12" Padding="14,12" Margin="0,0,0,12" Visibility="Collapsed">
           <StackPanel>
             <Grid Margin="0,0,0,6">
               <TextBlock Text="Conectar YouTube" FontWeight="SemiBold" FontSize="15"/>
@@ -585,10 +585,10 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             <TextBlock x:Name="TxtYTCredEstado" TextWrapping="Wrap" FontSize="13" Margin="0,0,0,10"/>
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-              <Button x:Name="BtnYTPaso4" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="12,6" FontSize="13"
+              <Button x:Name="BtnYTPaso4" Style="{StaticResource Plano}" Background="#2A2E36" Padding="12,6" FontSize="13"
                       Tag="https://console.cloud.google.com/apis/credentials" Content="1. Coger Client ID y secret en Google Cloud ↗"
                       ToolTip="Con este panel abierto, copia el ID y el secreto con el botón de copiar de Google: Valora los rellena y los guarda sola"/>
-              <Button x:Name="BtnYTPaso2" Style="{StaticResource Plano}" Foreground="#8E8E8E" Padding="8,6" FontSize="12" Margin="6,0,0,0"
+              <Button x:Name="BtnYTPaso2" Style="{StaticResource Plano}" Foreground="#8C929C" Padding="8,6" FontSize="12" Margin="6,0,0,0"
                       Tag="https://console.cloud.google.com/apis/library/youtube.googleapis.com" Content="¿API sin activar?"
                       ToolTip="Activa YouTube Data API v3 en el proyecto (solo la primera vez)"/>
             </StackPanel>
@@ -599,19 +599,19 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                 <ColumnDefinition Width="Auto"/>
               </Grid.ColumnDefinitions>
               <StackPanel Margin="0,0,8,0">
-                <TextBlock Text="Client ID" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
-                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
-                  <TextBox x:Name="YTClientId" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"
+                <TextBlock Text="Client ID" Foreground="#ACB1B9" FontSize="12.5" Margin="0,0,0,4"/>
+                <Border Background="#121418" CornerRadius="8" BorderBrush="#363C47" BorderThickness="1" Padding="8,2">
+                  <TextBox x:Name="YTClientId" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" Padding="0,6"
                            ToolTip="Acaba en .apps.googleusercontent.com. También se puede pegar aquí el JSON entero que descarga Google."/>
                 </Border>
               </StackPanel>
               <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                <TextBlock Text="Client secret" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
-                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
-                  <PasswordBox x:Name="YTClientSecret" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+                <TextBlock Text="Client secret" Foreground="#ACB1B9" FontSize="12.5" Margin="0,0,0,4"/>
+                <Border Background="#121418" CornerRadius="8" BorderBrush="#363C47" BorderThickness="1" Padding="8,2">
+                  <PasswordBox x:Name="YTClientSecret" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" Padding="0,6"/>
                 </Border>
               </StackPanel>
-              <Button x:Name="BtnYTGuardarCred" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717"
+              <Button x:Name="BtnYTGuardarCred" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECE8E1" Foreground="#14161A"
                       Padding="14,7" FontWeight="SemiBold" VerticalAlignment="Bottom" Content="Guardar en el servidor"/>
             </Grid>
 
@@ -627,7 +627,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             <StackPanel x:Name="YTCodigoCaja" Orientation="Horizontal" Margin="0,10,0,0">
               <TextBox x:Name="TxtYTCodigo" IsReadOnly="True" FontFamily="Consolas" FontSize="24" FontWeight="Bold" Background="Transparent"
                        BorderThickness="0" Foreground="White" VerticalAlignment="Center" Margin="0,0,14,0"/>
-              <Button x:Name="BtnYTCopiar" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="12,6"
+              <Button x:Name="BtnYTCopiar" Style="{StaticResource Plano}" Background="#ECE8E1" Foreground="#14161A" Padding="12,6"
                       FontWeight="SemiBold" Content="Copiar código" VerticalAlignment="Center"/>
               <Button x:Name="BtnYTAbrirGoogle" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="12,6"
                       Margin="8,0,0,0" FontWeight="SemiBold" Content="Abrir la página de Google" VerticalAlignment="Center"/>
@@ -642,10 +642,10 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
-          <Border Background="#1A1A1A" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,2">
+          <Border Background="#181B20" CornerRadius="10" BorderBrush="#363C47" BorderThickness="1" Padding="10,2">
             <Grid>
-              <TextBox x:Name="YTBuscar" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,7"/>
-              <TextBlock x:Name="YTBuscarPista" Text="Buscar por título o fecha" Foreground="#6E6E6E" IsHitTestVisible="False" VerticalAlignment="Center" Margin="2,0"/>
+              <TextBox x:Name="YTBuscar" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" Padding="0,7"/>
+              <TextBlock x:Name="YTBuscarPista" Text="Buscar por título o fecha" Foreground="#6A707B" IsHitTestVisible="False" VerticalAlignment="Center" Margin="2,0"/>
             </Grid>
           </Border>
           <ComboBox x:Name="YTPlaylist" Grid.Column="1" Margin="8,0,0,0" MinWidth="170" VerticalContentAlignment="Center"/>
@@ -664,9 +664,9 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
 
         <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
           <StackPanel Orientation="Horizontal">
-            <TextBlock x:Name="TxtYTSel" Foreground="#CFCFCF" FontSize="13" VerticalAlignment="Center" Margin="2,0,10,0"/>
-            <Button x:Name="BtnYTTodos" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="8,5" FontSize="13" Content="Seleccionar los filtrados"/>
-            <Button x:Name="BtnYTNinguno" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="8,5" FontSize="13" Content="Quitar selección"/>
+            <TextBlock x:Name="TxtYTSel" Foreground="#CDCAC3" FontSize="13" VerticalAlignment="Center" Margin="2,0,10,0"/>
+            <Button x:Name="BtnYTTodos" Style="{StaticResource Plano}" Foreground="#ACB1B9" Padding="8,5" FontSize="13" Content="Seleccionar los filtrados"/>
+            <Button x:Name="BtnYTNinguno" Style="{StaticResource Plano}" Foreground="#ACB1B9" Padding="8,5" FontSize="13" Content="Quitar selección"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <ComboBox x:Name="YTPrivacidad" MinWidth="110" VerticalContentAlignment="Center" ToolTip="Cómo quedan los vídeos nuevos">
@@ -679,7 +679,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
           </StackPanel>
         </Grid>
 
-        <TextBlock DockPanel.Dock="Bottom" Foreground="#6E6E6E" FontSize="11.5" Margin="2,6,0,0"
+        <TextBlock DockPanel.Dock="Bottom" Foreground="#6A707B" FontSize="11.5" Margin="2,6,0,0"
                    Text="Ctrl o Mayús + clic para elegir varios · doble clic abre el vídeo en YouTube"/>
 
         <Grid>
@@ -687,7 +687,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="300"/>
           </Grid.ColumnDefinitions>
-          <ListView x:Name="YTLista" Background="#1A1A1A" BorderThickness="0" Foreground="#ECECEC" SelectionMode="Extended"
+          <ListView x:Name="YTLista" Background="#181B20" BorderThickness="0" Foreground="#ECE8E1" SelectionMode="Extended"
                     ItemContainerStyle="{StaticResource FilaYT}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
             <ListView.View>
               <GridView ColumnHeaderContainerStyle="{StaticResource CabeceraYT}">
@@ -700,10 +700,10 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               </GridView>
             </ListView.View>
           </ListView>
-          <Border Grid.Column="1" Background="#1A1A1A" CornerRadius="12" Padding="14,12" Margin="12,0,0,0">
+          <Border Grid.Column="1" Background="#181B20" CornerRadius="12" Padding="14,12" Margin="12,0,0,0">
             <DockPanel>
               <TextBlock DockPanel.Dock="Top" Text="Cola de resubida" FontWeight="SemiBold" FontSize="15"/>
-              <TextBlock x:Name="TxtYTCola" DockPanel.Dock="Top" Foreground="#8E8E8E" FontSize="12.5" Margin="0,4,0,8" TextWrapping="Wrap" Text="Vacía."/>
+              <TextBlock x:Name="TxtYTCola" DockPanel.Dock="Top" Foreground="#8C929C" FontSize="12.5" Margin="0,4,0,8" TextWrapping="Wrap" Text="Vacía."/>
               <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="YTCola"/>
               </ScrollViewer>
@@ -714,12 +714,12 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
     </Grid>
 
     <!-- Cómo quiere el usuario que responda Valora -->
-    <Grid x:Name="PanelEstilo" Grid.ColumnSpan="2" Background="#CC121212" Visibility="Collapsed" Panel.ZIndex="25">
-      <Border Width="620" Background="#262626" CornerRadius="18" Padding="24,20" BorderBrush="#3A3A3A" BorderThickness="1"
+    <Grid x:Name="PanelEstilo" Grid.ColumnSpan="2" Background="#CC0E1014" Visibility="Collapsed" Panel.ZIndex="25">
+      <Border Width="620" Background="#252930" CornerRadius="18" Padding="24,20" BorderBrush="#363C47" BorderThickness="1"
               VerticalAlignment="Center" HorizontalAlignment="Center">
         <StackPanel>
           <TextBlock Text="Cómo quieres que te responda" FontSize="20" FontWeight="SemiBold"/>
-          <TextBlock Text="Se aplica a todas tus preguntas, en todas las conversaciones." Foreground="#8E8E8E" FontSize="13" Margin="0,4,0,12"/>
+          <TextBlock Text="Se aplica a todas tus preguntas, en todas las conversaciones." Foreground="#8C929C" FontSize="13" Margin="0,4,0,12"/>
           <WrapPanel x:Name="AtajosEstilo" Margin="0,0,0,10">
             <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Responde breve y al grano, sin introducciones ni despedidas." Content="Breve y directo"/>
             <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Explica con detalle y razona cada conclusión." Content="Detallado"/>
@@ -727,15 +727,15 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Usa un tono profesional y formal, de informe de tasación." Content="Tono formal"/>
             <Button Style="{StaticResource Chip}" Margin="0,0,6,6" Tag="Termina siempre con un precio estimado en euros (mínimo y máximo) y en qué te basas." Content="Siempre con precio"/>
           </WrapPanel>
-          <Border Background="#1A1A1A" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,4">
-            <TextBox x:Name="TxtEstilo" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" FontSize="14"
+          <Border Background="#181B20" CornerRadius="10" BorderBrush="#363C47" BorderThickness="1" Padding="10,4">
+            <TextBox x:Name="TxtEstilo" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" FontSize="14"
                      TextWrapping="Wrap" AcceptsReturn="True" MinHeight="140" MaxHeight="300" VerticalScrollBarVisibility="Auto" Padding="0,6"/>
           </Border>
           <Grid Margin="0,14,0,0">
-            <Button x:Name="BtnEstiloBorrar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="10,8" HorizontalAlignment="Left" Content="Borrar indicaciones" ToolTip="Valora vuelve a responder como siempre"/>
+            <Button x:Name="BtnEstiloBorrar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Padding="10,8" HorizontalAlignment="Left" Content="Borrar indicaciones" ToolTip="Valora vuelve a responder como siempre"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-              <Button x:Name="BtnEstiloCancelar" Style="{StaticResource Plano}" Foreground="#ECECEC" Padding="14,8" Content="Cancelar"/>
-              <Button x:Name="BtnEstiloGuardar" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="16,8"
+              <Button x:Name="BtnEstiloCancelar" Style="{StaticResource Plano}" Foreground="#ECE8E1" Padding="14,8" Content="Cancelar"/>
+              <Button x:Name="BtnEstiloGuardar" Style="{StaticResource Plano}" Background="#ECE8E1" Foreground="#14161A" Padding="16,8"
                       Margin="8,0,0,0" FontWeight="SemiBold" Content="Guardar"/>
             </StackPanel>
           </Grid>
@@ -744,8 +744,8 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
     </Grid>
 
     <!-- Fichas por tasar de Foticos Collection -->
-    <Grid x:Name="PanelFC" Grid.ColumnSpan="2" Background="#CC121212" Visibility="Collapsed" Panel.ZIndex="20">
-      <Border Width="760" MaxHeight="680" Background="#262626" CornerRadius="18" Padding="24,20" BorderBrush="#3A3A3A" BorderThickness="1"
+    <Grid x:Name="PanelFC" Grid.ColumnSpan="2" Background="#CC0E1014" Visibility="Collapsed" Panel.ZIndex="20">
+      <Border Width="760" MaxHeight="680" Background="#252930" CornerRadius="18" Padding="24,20" BorderBrush="#363C47" BorderThickness="1"
               VerticalAlignment="Center" HorizontalAlignment="Center">
         <DockPanel>
           <Grid DockPanel.Dock="Top" Margin="0,0,0,14">
@@ -756,30 +756,30 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               </Border>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-              <Button x:Name="BtnConexionFC" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Conexión"/>
+              <Button x:Name="BtnConexionFC" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Conexión"/>
               <Button x:Name="BtnCerrarFC" Style="{StaticResource Plano}" Padding="8">
                 <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE711;" FontSize="12"/>
               </Button>
             </StackPanel>
           </Grid>
 
-          <Border x:Name="ConexionFC" DockPanel.Dock="Top" Background="#1E1E1E" CornerRadius="12" Padding="14,12" Margin="0,0,0,14" Visibility="Collapsed">
+          <Border x:Name="ConexionFC" DockPanel.Dock="Top" Background="#1C1F25" CornerRadius="12" Padding="14,12" Margin="0,0,0,14" Visibility="Collapsed">
             <StackPanel>
               <TextBlock Text="Conexión con Foticos Collection" FontWeight="SemiBold" Margin="0,0,0,8"/>
               <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <RadioButton x:Name="RadPRE" Content="PRE (stg.foticoscollection.com)" Foreground="#ECECEC" Margin="0,0,18,0" GroupName="Entorno"/>
-                <RadioButton x:Name="RadPRO" Content="PRO (foticoscollection.com)" Foreground="#ECECEC" GroupName="Entorno"/>
+                <RadioButton x:Name="RadPRE" Content="PRE (stg.foticoscollection.com)" Foreground="#ECE8E1" Margin="0,0,18,0" GroupName="Entorno"/>
+                <RadioButton x:Name="RadPRO" Content="PRO (foticoscollection.com)" Foreground="#ECE8E1" GroupName="Entorno"/>
               </StackPanel>
-              <TextBlock Text="Clave de Valora (te la da el administrador; se guarda cifrada para tu usuario de Windows):" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
+              <TextBlock Text="Clave de Valora (te la da el administrador; se guarda cifrada para tu usuario de Windows):" Foreground="#ACB1B9" FontSize="12.5" Margin="0,0,0,4"/>
               <Grid>
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*"/>
                   <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
-                  <PasswordBox x:Name="ClaveFC" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+                <Border Background="#121418" CornerRadius="8" BorderBrush="#363C47" BorderThickness="1" Padding="8,2">
+                  <PasswordBox x:Name="ClaveFC" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" Padding="0,6"/>
                 </Border>
-                <Button x:Name="BtnGuardarConexion" Grid.Column="1" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717"
+                <Button x:Name="BtnGuardarConexion" Grid.Column="1" Style="{StaticResource Plano}" Background="#ECE8E1" Foreground="#14161A"
                         Padding="14,7" Margin="8,0,0,0" FontWeight="SemiBold" Content="Guardar y probar"/>
               </Grid>
             </StackPanel>
@@ -791,8 +791,8 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Border Background="#1A1A1A" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,2">
-              <TextBox x:Name="BuscarFC" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,7"
+            <Border Background="#181B20" CornerRadius="10" BorderBrush="#363C47" BorderThickness="1" Padding="10,2">
+              <TextBox x:Name="BuscarFC" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1" Padding="0,7"
                        ToolTip="Nombre, modelo, nº de serie o número de ficha"/>
             </Border>
             <ComboBox x:Name="EstadoFC" Grid.Column="1" Margin="8,0,0,0" MinWidth="150" VerticalContentAlignment="Center">
@@ -801,13 +801,13 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <ComboBoxItem Content="PREINGRESO"/>
               <ComboBoxItem Content="PRESUPUESTO"/>
             </ComboBox>
-            <Button x:Name="BtnBuscarFC" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="14,7"
+            <Button x:Name="BtnBuscarFC" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECE8E1" Foreground="#14161A" Padding="14,7"
                     Margin="8,0,0,0" FontWeight="SemiBold" Content="Buscar"/>
           </Grid>
 
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-            <Button x:Name="BtnMasFC" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Cargar más" Visibility="Collapsed"/>
-            <TextBlock x:Name="EstadoPanelFC" Foreground="#8E8E8E" FontSize="12.5" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
+            <Button x:Name="BtnMasFC" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Cargar más" Visibility="Collapsed"/>
+            <TextBlock x:Name="EstadoPanelFC" Foreground="#8C929C" FontSize="12.5" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
           </StackPanel>
 
           <ScrollViewer x:Name="ScrollFC" VerticalScrollBarVisibility="Auto">
@@ -818,8 +818,8 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
     </Grid>
 
     <!-- Confirmación de envío de la tasación -->
-    <Grid x:Name="PanelConfirmar" Grid.ColumnSpan="2" Background="#D9121212" Visibility="Collapsed" Panel.ZIndex="30">
-      <Border Width="820" MaxHeight="700" Background="#262626" CornerRadius="18" Padding="26,22" BorderBrush="#3A3A3A" BorderThickness="1"
+    <Grid x:Name="PanelConfirmar" Grid.ColumnSpan="2" Background="#D90E1014" Visibility="Collapsed" Panel.ZIndex="30">
+      <Border Width="820" MaxHeight="700" Background="#252930" CornerRadius="18" Padding="26,22" BorderBrush="#363C47" BorderThickness="1"
               VerticalAlignment="Center" HorizontalAlignment="Center">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
@@ -834,9 +834,9 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
           </StackPanel>
 
           <StackPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
-            <TextBlock x:Name="TxtConfEstado" Foreground="#8E8E8E" FontSize="13" Margin="0,0,0,10" TextWrapping="Wrap"/>
+            <TextBlock x:Name="TxtConfEstado" Foreground="#8C929C" FontSize="13" Margin="0,0,0,10" TextWrapping="Wrap"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-              <Button x:Name="BtnConfCancelar" Style="{StaticResource Plano}" Foreground="#ECECEC" Padding="16,9" Content="Cancelar"/>
+              <Button x:Name="BtnConfCancelar" Style="{StaticResource Plano}" Foreground="#ECE8E1" Padding="16,9" Content="Cancelar"/>
               <Button x:Name="BtnConfEnviar" Style="{StaticResource Plano}" Background="#2E7D5A" Foreground="White" Padding="18,9"
                       Margin="10,0,0,0" FontWeight="SemiBold" Content="Sí, enviar tasación"/>
             </StackPanel>
@@ -850,36 +850,36 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
     </Grid>
 
     <!-- Inicio de sesión con Google -->
-    <Grid x:Name="Login" Grid.ColumnSpan="2" Background="#E6121212" Visibility="Collapsed">
-      <Border Width="500" Background="#262626" CornerRadius="18" Padding="34,30" VerticalAlignment="Center" HorizontalAlignment="Center"
-              BorderBrush="#3A3A3A" BorderThickness="1">
+    <Grid x:Name="Login" Grid.ColumnSpan="2" Background="#E60E1014" Visibility="Collapsed">
+      <Border Width="500" Background="#252930" CornerRadius="18" Padding="34,30" VerticalAlignment="Center" HorizontalAlignment="Center"
+              BorderBrush="#363C47" BorderThickness="1">
         <StackPanel>
           <Border Width="52" Height="52" CornerRadius="14" Background="#2E7D5A" HorizontalAlignment="Left" Margin="0,0,0,18">
             <TextBlock Text="V" FontSize="28" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
           <TextBlock Text="Conecta tu cuenta de Google" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,8"/>
-          <TextBlock x:Name="LoginTexto" TextWrapping="Wrap" Foreground="#B4B4B4" FontSize="14" LineHeight="21" Margin="0,0,0,22"
+          <TextBlock x:Name="LoginTexto" TextWrapping="Wrap" Foreground="#ACB1B9" FontSize="14" LineHeight="21" Margin="0,0,0,22"
                      Text="Valora funciona con Google Antigravity. Para empezar, entra con tu cuenta de Google. Solo hace falta la primera vez."/>
 
-          <Button x:Name="BtnLogin" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="18,12"
+          <Button x:Name="BtnLogin" Style="{StaticResource Plano}" Background="#ECE8E1" Foreground="#14161A" Padding="18,12"
                   HorizontalContentAlignment="Center" FontSize="15" FontWeight="SemiBold" Content="Iniciar sesión con Google"/>
 
           <StackPanel x:Name="LoginCodigo" Visibility="Collapsed">
-            <TextBlock TextWrapping="Wrap" Foreground="#ECECEC" FontSize="14" LineHeight="21" Margin="0,0,0,12"
+            <TextBlock TextWrapping="Wrap" Foreground="#ECE8E1" FontSize="14" LineHeight="21" Margin="0,0,0,12"
                        Text="Tienes 1 minuto:&#x0a;1. En el navegador, elige tu cuenta de Google y acepta.&#x0a;2. Si al final Google te enseña un código, cópialo y pégalo aquí:"/>
-            <Border Background="#1A1A1A" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,4">
-              <TextBox x:Name="CodigoLogin" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC"
+            <Border Background="#181B20" CornerRadius="10" BorderBrush="#363C47" BorderThickness="1" Padding="10,4">
+              <TextBox x:Name="CodigoLogin" Background="Transparent" BorderThickness="0" Foreground="#ECE8E1" CaretBrush="#ECE8E1"
                        FontSize="14" Padding="0,8" FontFamily="Consolas"/>
             </Border>
             <Grid Margin="0,14,0,0">
-              <Button x:Name="BtnReabrir" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="8,8" Content="Abrir otra vez el navegador" HorizontalAlignment="Left"/>
-              <Button x:Name="BtnCodigo" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="18,9"
+              <Button x:Name="BtnReabrir" Style="{StaticResource Plano}" Foreground="#ACB1B9" Padding="8,8" Content="Abrir otra vez el navegador" HorizontalAlignment="Left"/>
+              <Button x:Name="BtnCodigo" Style="{StaticResource Plano}" Background="#ECE8E1" Foreground="#14161A" Padding="18,9"
                       FontWeight="SemiBold" Content="Continuar" HorizontalAlignment="Right"/>
             </Grid>
           </StackPanel>
 
-          <TextBlock x:Name="LoginEstado" TextWrapping="Wrap" Foreground="#8E8E8E" FontSize="13" Margin="0,16,0,0"/>
-          <Button x:Name="BtnLoginLuego" Style="{StaticResource Plano}" Foreground="#8E8E8E" Padding="8,6" FontSize="12.5"
+          <TextBlock x:Name="LoginEstado" TextWrapping="Wrap" Foreground="#8C929C" FontSize="13" Margin="0,16,0,0"/>
+          <Button x:Name="BtnLoginLuego" Style="{StaticResource Plano}" Foreground="#8C929C" Padding="8,6" FontSize="12.5"
                   HorizontalAlignment="Left" Margin="-8,8,0,0" Content="Ahora no" Visibility="Collapsed"/>
         </StackPanel>
       </Border>
@@ -926,7 +926,7 @@ function Brush([string]$hex) { return $conversorColor.ConvertFromString($hex) }
 $imagenes = @('.jpg','.jpeg','.png','.bmp','.gif','.tif','.tiff')
 
 # ---------- Utilidades de interfaz ----------
-function Set-Estado([string]$texto, [string]$color = '#8E8E8E') {
+function Set-Estado([string]$texto, [string]$color = '#8C929C') {
     $ui.TxtEstado.Text = $texto
     $ui.TxtEstado.Foreground = Brush $color
 }
@@ -935,7 +935,7 @@ function Update-Inicio {
     $ui.Inicio.Visibility = if ($ui.Chat.Children.Count -eq 0) { 'Visible' } else { 'Collapsed' }
 }
 
-function New-Icono([string]$glifo, [double]$tam = 14, [string]$color = '#CFCFCF') {
+function New-Icono([string]$glifo, [double]$tam = 14, [string]$color = '#CDCAC3') {
     $t = New-Object System.Windows.Controls.TextBlock
     $t.FontFamily = 'Segoe MDL2 Assets'; $t.Text = $glifo; $t.FontSize = $tam
     $t.Foreground = Brush $color; $t.VerticalAlignment = 'Center'; $t.HorizontalAlignment = 'Center'
@@ -976,7 +976,7 @@ function Add-InlinesMd($destino, [string]$texto) {
             $destino.Add($x)
         } elseif ($g['c'].Success) {
             $r = New-Object System.Windows.Documents.Run(' ' + $g['c'].Value + ' ')
-            $r.FontFamily = 'Consolas'; $r.Background = Brush '#2F2F2F'; $r.Foreground = Brush '#F0C987'
+            $r.FontFamily = 'Consolas'; $r.Background = Brush '#2C313A'; $r.Foreground = Brush '#F0C987'
             $destino.Add($r)
         } else {
             $url = if ($g['lu'].Success) { $g['lu'].Value } else { $g['url'].Value }
@@ -1008,26 +1008,26 @@ $PasarRueda = { $ui.Scroll.ScrollToVerticalOffset($ui.Scroll.VerticalOffset - $_
 
 function New-CodigoMd([string]$codigo, [string]$lenguaje) {
     $b = New-Object System.Windows.Controls.Border
-    $b.Background = Brush '#171717'; $b.CornerRadius = 10; $b.BorderBrush = Brush '#333333'; $b.BorderThickness = 1
+    $b.Background = Brush '#14161A'; $b.CornerRadius = 10; $b.BorderBrush = Brush '#31363F'; $b.BorderThickness = 1
     $b.Margin = '0,2,0,12'
     $pila = New-Object System.Windows.Controls.DockPanel
     $cab = New-Object System.Windows.Controls.Border
-    $cab.Background = Brush '#232323'; $cab.CornerRadius = '10,10,0,0'; $cab.Padding = '12,2,4,2'
+    $cab.Background = Brush '#22262D'; $cab.CornerRadius = '10,10,0,0'; $cab.Padding = '12,2,4,2'
     [System.Windows.Controls.DockPanel]::SetDock($cab, 'Top')
     $g = New-Object System.Windows.Controls.DockPanel
     $copiar = New-Object System.Windows.Controls.Button
-    $copiar.Style = $win.FindResource('Plano'); $copiar.Padding = '8,3'; $copiar.FontSize = 12; $copiar.Foreground = Brush '#B4B4B4'
+    $copiar.Style = $win.FindResource('Plano'); $copiar.Padding = '8,3'; $copiar.FontSize = 12; $copiar.Foreground = Brush '#ACB1B9'
     $copiar.Content = 'Copiar'; $copiar.Tag = $codigo
     $copiar.Add_Click({ [System.Windows.Clipboard]::SetText([string]$this.Tag); $this.Content = 'Copiado ✓' })
     [System.Windows.Controls.DockPanel]::SetDock($copiar, 'Right')
     $leng = New-Object System.Windows.Controls.TextBlock
-    $leng.Text = if ($lenguaje) { $lenguaje } else { 'código' }; $leng.Foreground = Brush '#8E8E8E'; $leng.FontSize = 12
+    $leng.Text = if ($lenguaje) { $lenguaje } else { 'código' }; $leng.Foreground = Brush '#8C929C'; $leng.FontSize = 12
     $leng.VerticalAlignment = 'Center'
     [void]$g.Children.Add($copiar); [void]$g.Children.Add($leng)
     $cab.Child = $g
     $t = New-Object System.Windows.Controls.TextBox
     $t.Text = $codigo; $t.IsReadOnly = $true; $t.FontFamily = 'Consolas'; $t.FontSize = 13.5
-    $t.Foreground = Brush '#E6E6E6'; $t.Background = Brush '#00000000'; $t.BorderThickness = 0; $t.Padding = '12,10'
+    $t.Foreground = Brush '#E6E2DA'; $t.Background = Brush '#00000000'; $t.BorderThickness = 0; $t.Padding = '12,10'
     $t.TextWrapping = 'NoWrap'; $t.HorizontalScrollBarVisibility = 'Auto'; $t.VerticalScrollBarVisibility = 'Disabled'
     $t.Add_PreviewMouseWheel($PasarRueda)
     [void]$pila.Children.Add($cab); [void]$pila.Children.Add($t)
@@ -1044,17 +1044,17 @@ function Split-FilaMd([string]$linea) {
 
 function New-TablaMd($filas) {
     $t = New-Object System.Windows.Documents.Table
-    $t.CellSpacing = 0; $t.Margin = '0,2,0,14'; $t.BorderBrush = Brush '#3A3A3A'; $t.BorderThickness = '1,1,0,0'
+    $t.CellSpacing = 0; $t.Margin = '0,2,0,14'; $t.BorderBrush = Brush '#363C47'; $t.BorderThickness = '1,1,0,0'
     $n = ($filas | ForEach-Object { $_.Count } | Measure-Object -Maximum).Maximum
     for ($c = 0; $c -lt $n; $c++) { $t.Columns.Add((New-Object System.Windows.Documents.TableColumn)) }
     $grupo = New-Object System.Windows.Documents.TableRowGroup
     $t.RowGroups.Add($grupo)
     for ($f = 0; $f -lt $filas.Count; $f++) {
         $fila = New-Object System.Windows.Documents.TableRow
-        if ($f -eq 0) { $fila.Background = Brush '#2A2A2A'; $fila.FontWeight = 'SemiBold' }
+        if ($f -eq 0) { $fila.Background = Brush '#2A2E36'; $fila.FontWeight = 'SemiBold' }
         for ($c = 0; $c -lt $n; $c++) {
             $celda = New-Object System.Windows.Documents.TableCell
-            $celda.BorderBrush = Brush '#3A3A3A'; $celda.BorderThickness = '0,0,1,1'; $celda.Padding = '8,4'
+            $celda.BorderBrush = Brush '#363C47'; $celda.BorderThickness = '0,0,1,1'; $celda.Padding = '8,4'
             $p = New-Object System.Windows.Documents.Paragraph
             $p.Margin = '0'; $p.FontSize = 14
             $texto = if ($c -lt $filas[$f].Count) { $filas[$f][$c] } else { '' }
@@ -1090,7 +1090,7 @@ function New-ListaMd($items) {
 
 function ConvertTo-DocumentoMd([string]$md) {
     $doc = New-Object System.Windows.Documents.FlowDocument
-    $doc.PagePadding = '0'; $doc.FontFamily = 'Segoe UI'; $doc.FontSize = 15; $doc.Foreground = Brush '#ECECEC'
+    $doc.PagePadding = '0'; $doc.FontFamily = 'Segoe UI'; $doc.FontSize = 15; $doc.Foreground = Brush '#ECE8E1'
     $doc.LineHeight = 24
     $lineas = ($md -replace "`r", '') -split "`n"
     $parrafo = New-Object 'System.Collections.Generic.List[string]'
@@ -1118,7 +1118,7 @@ function ConvertTo-DocumentoMd([string]$md) {
         }
         if ($l -match '^\s*([-*_])(\s*\1){2,}\s*$') {
             $sep = New-Object System.Windows.Controls.Border
-            $sep.Height = 1; $sep.Background = Brush '#3A3A3A'; $sep.Margin = '0,6,0,6'
+            $sep.Height = 1; $sep.Background = Brush '#363C47'; $sep.Margin = '0,6,0,6'
             $doc.Blocks.Add((New-Object System.Windows.Documents.BlockUIContainer($sep)))
             $i++; continue
         }
@@ -1126,8 +1126,8 @@ function ConvertTo-DocumentoMd([string]$md) {
             $cita = New-Object 'System.Collections.Generic.List[string]'
             while ($i -lt $lineas.Count -and $lineas[$i] -match '^\s*>\s?(.*)$') { $cita.Add($Matches[1]); $i++ }
             $sec = New-Object System.Windows.Documents.Section
-            $sec.BorderBrush = Brush '#5A5A5A'; $sec.BorderThickness = '3,0,0,0'; $sec.Padding = '12,0,0,0'
-            $sec.Margin = '0,0,0,12'; $sec.Foreground = Brush '#B4B4B4'
+            $sec.BorderBrush = Brush '#5A606B'; $sec.BorderThickness = '3,0,0,0'; $sec.Padding = '12,0,0,0'
+            $sec.Margin = '0,0,0,12'; $sec.Foreground = Brush '#ACB1B9'
             $sec.Blocks.Add((New-ParrafoMd ($cita -join "`n") 15 $false '0'))
             $doc.Blocks.Add($sec)
             continue
@@ -1172,7 +1172,7 @@ function Show-Respuesta {
     $r = $script:respuesta
     if (-not $r) { return }
     $r.Pintado = Get-Date
-    if ($r.Color -ne '#ECECEC') {
+    if ($r.Color -ne '#ECE8E1') {
         $r.Caja.Content = New-TextoLectura $r.Text $r.Color
         return
     }
@@ -1181,7 +1181,7 @@ function Show-Respuesta {
     if ($rtb -isnot [System.Windows.Controls.RichTextBox]) {
         $rtb = New-Object System.Windows.Controls.RichTextBox
         $rtb.IsReadOnly = $true; $rtb.IsDocumentEnabled = $true; $rtb.BorderThickness = 0
-        $rtb.Background = Brush '#00000000'; $rtb.Foreground = Brush '#ECECEC'; $rtb.Padding = '0'
+        $rtb.Background = Brush '#00000000'; $rtb.Foreground = Brush '#ECE8E1'; $rtb.Padding = '0'
         $rtb.VerticalScrollBarVisibility = 'Disabled'
         $rtb.Add_PreviewMouseWheel($PasarRueda)
         $r.Caja.Content = $rtb
@@ -1204,9 +1204,9 @@ function Add-MensajeUsuario([string]$texto, $adjuntos) {
         [void]$pila.Children.Add($wrap)
     }
     $b = New-Object System.Windows.Controls.Border
-    $b.Background = Brush '#303030'; $b.CornerRadius = 18; $b.Padding = '16,10'
+    $b.Background = Brush '#2C313A'; $b.CornerRadius = 18; $b.Padding = '16,10'
     $b.HorizontalAlignment = 'Right'
-    $b.Child = New-TextoLectura $texto '#ECECEC'
+    $b.Child = New-TextoLectura $texto '#ECE8E1'
     [void]$pila.Children.Add($b)
     [void]$ui.Chat.Children.Add($pila)
     Update-Inicio
@@ -1219,19 +1219,20 @@ function Add-MensajeAgy {
     $c2 = New-Object System.Windows.Controls.ColumnDefinition
     $g.ColumnDefinitions.Add($c1); $g.ColumnDefinitions.Add($c2)
     $av = New-Object System.Windows.Controls.Border
-    $av.Width = 28; $av.Height = 28; $av.CornerRadius = 14; $av.BorderBrush = Brush '#3A3A3A'; $av.BorderThickness = 1
-    $av.VerticalAlignment = 'Top'; $av.Margin = '0,2,14,0'
+    $av.Width = 28; $av.Height = 28; $av.CornerRadius = 8; $av.Background = Brush '#C8A15A'
+    $av.VerticalAlignment = 'Top'; $av.Margin = '0,0,14,0'
     $l = New-Object System.Windows.Controls.TextBlock
-    $l.Text = 'V'; $l.FontWeight = 'Bold'; $l.HorizontalAlignment = 'Center'; $l.VerticalAlignment = 'Center'
+    $l.Text = 'V'; $l.FontWeight = 'Bold'; $l.FontSize = 14; $l.Foreground = Brush '#14161A'
+    $l.HorizontalAlignment = 'Center'; $l.VerticalAlignment = 'Center'
     $av.Child = $l
     $caja = New-Object System.Windows.Controls.ContentControl
-    $caja.Content = New-TextoLectura 'Pensando…' '#8E8E8E'
+    $caja.Content = New-TextoLectura 'Pensando…' '#8C929C'
     [System.Windows.Controls.Grid]::SetColumn($caja, 1)
     [void]$g.Children.Add($av); [void]$g.Children.Add($caja)
     [void]$ui.Chat.Children.Add($g)
     Update-Inicio
     # Text es el Markdown tal como llega de agy; Caja enseña su versión con formato.
-    $script:respuesta = [pscustomobject]@{ Caja = $caja; Text = ''; Color = '#ECECEC'; Pintado = [datetime]::MinValue }
+    $script:respuesta = [pscustomobject]@{ Caja = $caja; Text = ''; Color = '#ECE8E1'; Pintado = [datetime]::MinValue }
     $script:pensando = $true
 }
 
@@ -1305,7 +1306,7 @@ function Update-ListaConv {
     if (-not $convs.Count) {
         $v = New-Object System.Windows.Controls.TextBlock
         $v.Text = if ($filtro) { 'Ninguna conversación coincide.' } else { 'Aún no hay conversaciones.' }
-        $v.Foreground = Brush '#6A6A6A'; $v.FontSize = 12.5; $v.Margin = '12,4,12,0'; $v.TextWrapping = 'Wrap'
+        $v.Foreground = Brush '#6A707B'; $v.FontSize = 12.5; $v.Margin = '12,4,12,0'; $v.TextWrapping = 'Wrap'
         [void]$ui.ListaConv.Children.Add($v)
         return
     }
@@ -1315,19 +1316,19 @@ function Update-ListaConv {
         if ($g0 -ne $grupo) {
             $grupo = $g0
             $h = New-Object System.Windows.Controls.TextBlock
-            $h.Text = $grupo; $h.Foreground = Brush '#7A7A7A'; $h.FontSize = 11.5; $h.FontWeight = 'SemiBold'
-            $h.Margin = $(if ($ui.ListaConv.Children.Count) { '12,12,12,4' } else { '12,2,12,4' })
+            $h.Text = $grupo; $h.Foreground = Brush '#767C87'; $h.FontSize = 11.5; $h.FontWeight = 'SemiBold'
+            $h.Margin = $(if ($ui.ListaConv.Children.Count) { '10,14,10,4' } else { '10,2,10,4' })
             [void]$ui.ListaConv.Children.Add($h)
         }
         $activa = $script:conv -and $script:conv.id -eq $c.id
         $trabajando = $script:proc -and $script:convTrabajo -and $script:convTrabajo.id -eq $c.id
 
         $g = New-Object System.Windows.Controls.Grid
-        $g.Margin = '2,0,2,1'
+        $g.Margin = '0,0,0,1'
         $btn = New-Object System.Windows.Controls.Button
         $btn.Style = $win.FindResource('Plano'); $btn.Padding = '10,8'; $btn.Tag = $c.id
         $btn.HorizontalContentAlignment = 'Stretch'
-        if ($activa) { $btn.Background = Brush '#2F2F2F' }
+        if ($activa) { $btn.Background = Brush '#2C313A' }
         $fila = New-Object System.Windows.Controls.DockPanel
         $fila.LastChildFill = $true
         # A la derecha: la hora, «Respondiendo…» o, al pasar el ratón, la papelera.
@@ -1336,12 +1337,12 @@ function Update-ListaConv {
         if ($trabajando) { $hora.Text = '● Respondiendo'; $hora.Foreground = Brush '#E8A33D' }
         else {
             $hora.Text = if ($c.actualizada -ge (Get-Date).Date) { $c.actualizada.ToString('HH:mm') } else { $c.actualizada.ToString('d MMM', [Globalization.CultureInfo]'es-ES').TrimEnd('.') }
-            $hora.Foreground = Brush '#6A6A6A'
+            $hora.Foreground = Brush '#6A707B'
         }
         [System.Windows.Controls.DockPanel]::SetDock($hora, 'Right')
         $t = New-Object System.Windows.Controls.TextBlock
         $t.Text = $c.titulo; $t.TextTrimming = 'CharacterEllipsis'; $t.FontSize = 13.5; $t.VerticalAlignment = 'Center'
-        $t.Foreground = Brush $(if ($activa) { '#FFFFFF' } else { '#D6D6D6' })
+        $t.Foreground = Brush $(if ($activa) { '#FFFFFF' } else { '#D4D1CA' })
         [void]$fila.Children.Add($hora); [void]$fila.Children.Add($t)
         $btn.Content = $fila
         $btn.ToolTip = $c.titulo + "`n" + $c.actualizada.ToString('dd/MM/yyyy HH:mm')
@@ -1352,7 +1353,7 @@ function Update-ListaConv {
         $x.HorizontalAlignment = 'Right'; $x.VerticalAlignment = 'Center'
         $x.Tag = $c.id; $x.ToolTip = 'Borrar conversación'
         [System.Windows.Automation.AutomationProperties]::SetName($x, 'Borrar: ' + $c.titulo)
-        $x.Content = New-Icono ([string][char]0xE74D) 11 '#9A9A9A'
+        $x.Content = New-Icono ([string][char]0xE74D) 11 '#969CA6'
         $x.Add_Click({ Remove-Conv $this.Tag })
         $x.Visibility = $(if ($activa) { 'Visible' } else { 'Hidden' })
         $g.Tag = $x
@@ -1361,6 +1362,12 @@ function Update-ListaConv {
             $g.Add_MouseLeave({ $this.Tag.Visibility = 'Hidden' })
         }
         [void]$g.Children.Add($btn); [void]$g.Children.Add($x)
+        if ($activa) {
+            $marca = New-Object System.Windows.Controls.Border
+            $marca.Width = 3; $marca.CornerRadius = 2; $marca.Margin = '0,9,0,9'; $marca.HorizontalAlignment = 'Left'
+            $marca.Background = Brush '#C8A15A'; $marca.IsHitTestVisible = $false
+            [void]$g.Children.Add($marca)
+        }
         [void]$ui.ListaConv.Children.Add($g)
     }
 }
@@ -1427,7 +1434,7 @@ function Remove-Conv([string]$id) {
     Set-Estado 'Conversación borrada.'
 }
 
-function Write-Respuesta([string]$texto, [string]$color = '#ECECEC') {
+function Write-Respuesta([string]$texto, [string]$color = '#ECE8E1') {
     if (-not $script:respuesta) { return }
     if ($script:pensando) {
         $script:respuesta.Text = ''
@@ -1443,7 +1450,7 @@ function New-Miniatura([string]$ruta, [int]$alto, [bool]$quitable) {
     $g = New-Object System.Windows.Controls.Grid
     $g.Margin = '0,0,8,8'
     $b = New-Object System.Windows.Controls.Border
-    $b.CornerRadius = 10; $b.Background = Brush '#3A3A3A'; $b.ToolTip = $ruta
+    $b.CornerRadius = 10; $b.Background = Brush '#363C47'; $b.ToolTip = $ruta
     $esImagen = $false
     if ($imagenes -contains [IO.Path]::GetExtension($ruta).ToLower()) {
         try {
@@ -1463,7 +1470,7 @@ function New-Miniatura([string]$ruta, [int]$alto, [bool]$quitable) {
         [void]$sp.Children.Add((New-Icono $glifo 14))
         $n = New-Object System.Windows.Controls.TextBlock
         $n.Text = Split-Path $ruta -Leaf; $n.Margin = '8,0,0,0'; $n.MaxWidth = 200; $n.TextTrimming = 'CharacterEllipsis'
-        $n.Foreground = Brush '#ECECEC'; $n.FontSize = 13; $n.VerticalAlignment = 'Center'
+        $n.Foreground = Brush '#ECE8E1'; $n.FontSize = 13; $n.VerticalAlignment = 'Center'
         [void]$sp.Children.Add($n)
         $b.Child = $sp
     }
@@ -1471,9 +1478,9 @@ function New-Miniatura([string]$ruta, [int]$alto, [bool]$quitable) {
     if ($quitable) {
         $x = New-Object System.Windows.Controls.Button
         $x.Style = $win.FindResource('Redondo'); $x.Width = 20; $x.Height = 20
-        $x.Background = Brush '#ECECEC'; $x.HorizontalAlignment = 'Right'; $x.VerticalAlignment = 'Top'
+        $x.Background = Brush '#ECE8E1'; $x.HorizontalAlignment = 'Right'; $x.VerticalAlignment = 'Top'
         $x.Margin = '0,-6,-6,0'; $x.ToolTip = 'Quitar'
-        $x.Content = New-Icono ([string][char]0xE711) 8 '#171717'
+        $x.Content = New-Icono ([string][char]0xE711) 8 '#14161A'
         $x.Tag = $ruta
         $x.Add_Click({ $script:archivos.Remove($this.Tag); Update-Adjuntos })
         [void]$g.Children.Add($x)
@@ -1495,7 +1502,7 @@ function Update-Carpetas {
         $btn = New-Object System.Windows.Controls.Button
         $btn.Style = $win.FindResource('Plano'); $btn.Padding = '10,4'; $btn.ToolTip = $c; $btn.Tag = $c
         $sp = New-Object System.Windows.Controls.StackPanel; $sp.Orientation = 'Horizontal'
-        [void]$sp.Children.Add((New-Icono ([string][char]0xE8B7) 13 '#B4B4B4'))
+        [void]$sp.Children.Add((New-Icono ([string][char]0xE8B7) 13 '#ACB1B9'))
         $t = New-Object System.Windows.Controls.TextBlock
         $t.Text = Split-Path $c -Leaf; $t.Margin = '10,0,24,0'; $t.TextTrimming = 'CharacterEllipsis'; $t.MaxWidth = 170
         [void]$sp.Children.Add($t)
@@ -1504,7 +1511,7 @@ function Update-Carpetas {
         $x = New-Object System.Windows.Controls.Button
         $x.Style = $win.FindResource('Plano'); $x.Padding = '6'; $x.HorizontalAlignment = 'Right'; $x.Tag = $c
         $x.ToolTip = 'Desconectar carpeta'
-        $x.Content = New-Icono ([string][char]0xE711) 10 '#8E8E8E'
+        $x.Content = New-Icono ([string][char]0xE711) 10 '#8C929C'
         $x.Add_Click({ $script:carpetas.Remove($this.Tag); Update-Carpetas; Save-Config })
         [void]$g.Children.Add($btn); [void]$g.Children.Add($x)
         [void]$ui.ListaCarpetas.Items.Add($g)
@@ -1592,7 +1599,7 @@ function Close-Sesion {
     Update-Cuenta $false
     $script:loginIntentado = $false
     Show-Login 'Sesión cerrada.'
-    $ui.LoginEstado.Foreground = Brush '#8E8E8E'
+    $ui.LoginEstado.Foreground = Brush '#8C929C'
 }
 
 function Show-Login([string]$mensaje = '') {
@@ -1601,7 +1608,7 @@ function Show-Login([string]$mensaje = '') {
     $ui.BtnLogin.IsEnabled = $true
     $ui.LoginCodigo.Visibility = 'Collapsed'
     $ui.LoginEstado.Text = $mensaje
-    $ui.LoginEstado.Foreground = Brush $(if ($mensaje) { '#F28B82' } else { '#8E8E8E' })
+    $ui.LoginEstado.Foreground = Brush $(if ($mensaje) { '#F28B82' } else { '#8C929C' })
     Update-Cuenta $false
     Set-Estado 'Falta iniciar sesión con Google.' '#F28B82'
 }
@@ -1801,7 +1808,7 @@ $timerLogin.Add_Tick({
     if ($script:loginInicio -and -not $script:codigoEnviado -and -not $terminado) {
         $quedan = 60 - [int]((Get-Date) - $script:loginInicio).TotalSeconds
         if ($quedan -gt 0) {
-            $ui.LoginEstado.Foreground = Brush $(if ($quedan -le 15) { '#E8A33D' } else { '#8E8E8E' })
+            $ui.LoginEstado.Foreground = Brush $(if ($quedan -le 15) { '#E8A33D' } else { '#8C929C' })
             $ui.LoginEstado.Text = "Esperando a que termines en el navegador… (quedan $quedan s)"
         }
     }
@@ -1809,7 +1816,7 @@ $timerLogin.Add_Tick({
         $timerLogin.Stop()
         $script:loginProc.Cerrar()
         $script:loginProc = $null
-        $ui.LoginEstado.Foreground = Brush '#8E8E8E'
+        $ui.LoginEstado.Foreground = Brush '#8C929C'
         $ui.LoginEstado.Text = 'Comprobando…'
         Start-Comprobacion
     }
@@ -1826,7 +1833,7 @@ function Start-Login {
     $script:codigoMalo = $false
     $script:codigoEnviado = $false
     $ui.BtnLogin.IsEnabled = $false
-    $ui.LoginEstado.Foreground = Brush '#8E8E8E'
+    $ui.LoginEstado.Foreground = Brush '#8C929C'
     $ui.LoginEstado.Text = 'Abriendo el navegador…'
     try {
         if (-not ('ValoraPty' -as [type])) { Add-Type -TypeDefinition $PtyCodigo -Language CSharp }
@@ -1848,7 +1855,7 @@ function Send-CodigoLogin {
     try { $script:loginProc.Escribir($codigo + "`r") } catch {}
     $script:codigoEnviado = $true
     $ui.CodigoLogin.Clear()
-    $ui.LoginEstado.Foreground = Brush '#8E8E8E'
+    $ui.LoginEstado.Foreground = Brush '#8C929C'
     $ui.LoginEstado.Text = 'Comprobando el código…'
 }
 
@@ -1935,7 +1942,7 @@ $timer.Add_Tick({
         } else {
             Set-Estado "agy terminó con error (código $codigo)." '#F28B82'
         }
-        if ($script:pensando) { Write-Respuesta '(sin respuesta)' '#8E8E8E' }
+        if ($script:pensando) { Write-Respuesta '(sin respuesta)' '#8C929C' }
         if ($script:respuesta) {
             # La respuesta va a su conversación, aunque en pantalla se esté viendo otra.
             $actual = $script:conv
@@ -2136,7 +2143,7 @@ $ui.Prompt.Add_PreviewKeyDown({
 
 # ---------- Cómo quiere el usuario que responda ----------
 function Update-IcoEstilo {
-    $ui.IcoEstilo.Foreground = Brush $(if ($script:estilo.Trim()) { '#81C995' } else { '#8E8E8E' })
+    $ui.IcoEstilo.Foreground = Brush $(if ($script:estilo.Trim()) { '#81C995' } else { '#8C929C' })
     $ui.BtnEstilo.ToolTip = if ($script:estilo.Trim()) { "Cómo te responde Valora:`n" + $script:estilo.Trim() } else { 'Cómo quieres que te responda Valora' }
 }
 $ui.BtnEstilo.Add_Click({
@@ -2334,7 +2341,7 @@ function New-FilaFicha($f) {
     $c2 = New-Object System.Windows.Controls.ColumnDefinition
     $g.ColumnDefinitions.Add($c1); $g.ColumnDefinitions.Add($c2)
     $foto = New-Object System.Windows.Controls.Border
-    $foto.Width = 52; $foto.Height = 52; $foto.CornerRadius = 8; $foto.Background = Brush '#3A3A3A'; $foto.Margin = '0,0,12,0'
+    $foto.Width = 52; $foto.Height = 52; $foto.CornerRadius = 8; $foto.Background = Brush '#363C47'; $foto.Margin = '0,0,12,0'
     if ($f.foto) {
         try {
             $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
@@ -2348,7 +2355,7 @@ function New-FilaFicha($f) {
     $t.Text = "#$($f.id) · $($f.nombre)"; $t.TextTrimming = 'CharacterEllipsis'; $t.FontSize = 14.5
     $d = New-Object System.Windows.Controls.TextBlock
     $d.Text = (@($f.tipo, $f.marca, $f.modelo, $f.estado) | Where-Object { $_ }) -join ' · '
-    $d.Foreground = Brush '#8E8E8E'; $d.FontSize = 12.5; $d.TextTrimming = 'CharacterEllipsis'
+    $d.Foreground = Brush '#8C929C'; $d.FontSize = 12.5; $d.TextTrimming = 'CharacterEllipsis'
     [void]$sp.Children.Add($t); [void]$sp.Children.Add($d)
     [System.Windows.Controls.Grid]::SetColumn($sp, 1)
     [void]$g.Children.Add($foto); [void]$g.Children.Add($sp)
@@ -2362,7 +2369,7 @@ function Get-PendientesFC([bool]$reiniciar) {
     if ($script:fcCargando) { return }
     if ($reiniciar) { $script:fcPagina = 1; $ui.ListaFC.Children.Clear() }
     $script:fcCargando = $true
-    $ui.EstadoPanelFC.Foreground = Brush '#8E8E8E'
+    $ui.EstadoPanelFC.Foreground = Brush '#8C929C'
     $ui.EstadoPanelFC.Text = 'Cargando fichas…'
     $q = [Uri]::EscapeDataString($ui.BuscarFC.Text.Trim())
     $est = ''
@@ -2381,7 +2388,7 @@ function Get-PendientesFC([bool]$reiniciar) {
 # --- Abrir una ficha: datos + reglas + fotos, y conversación nueva para tasarla.
 function Open-FichaFC([int]$id) {
     if ($script:proc) { $ui.EstadoPanelFC.Text = 'Espera a que Valora termine la respuesta en curso.'; return }
-    $ui.EstadoPanelFC.Foreground = Brush '#8E8E8E'
+    $ui.EstadoPanelFC.Foreground = Brush '#8C929C'
     $ui.EstadoPanelFC.Text = "Abriendo la ficha #$id…"
     $ctx = @{ id = $id; entorno = $script:fcEntorno }
     Invoke-FC 'GET' "/items/$id" $null {
@@ -2499,7 +2506,7 @@ function Update-BarraFicha {
 
 # --- Confirmación: el servidor calcula el antes/después (simular) y solo se
 #     guarda al pulsar "Sí, enviar tasación".
-function Add-CeldaTabla([int]$fila, [int]$col, [string]$texto, [string]$color = '#ECECEC', [bool]$negrita = $false) {
+function Add-CeldaTabla([int]$fila, [int]$col, [string]$texto, [string]$color = '#ECE8E1', [bool]$negrita = $false) {
     $t = New-Object System.Windows.Controls.TextBox
     $t.Text = $texto; $t.IsReadOnly = $true; $t.BorderThickness = 0; $t.Background = 'Transparent'
     $t.Foreground = Brush $color; $t.TextWrapping = 'Wrap'; $t.FontSize = 13.5; $t.Margin = '0,6,12,6'
@@ -2523,7 +2530,7 @@ function Show-Confirmar {
     Set-Insignia $ui.ConfEntorno $ui.TxtConfEntorno $f.entorno
     $ui.TxtConfPieza.Text = "Ficha #$($f.id) · $($f.nombre)"
     $ui.TxtConfAviso.Text = ''
-    $ui.TxtConfEstado.Foreground = Brush '#8E8E8E'
+    $ui.TxtConfEstado.Foreground = Brush '#8C929C'
     $ui.TxtConfEstado.Text = 'Calculando qué cambiaría en la ficha…'
     $ui.TablaCambios.Children.Clear(); $ui.TablaCambios.RowDefinitions.Clear(); $ui.TablaCambios.ColumnDefinitions.Clear()
     $ui.BtnConfEnviar.IsEnabled = $false
@@ -2552,14 +2559,14 @@ function Start-SimulacionFC($f) {
         }
         $filas = @($res.cambios)
         for ($i = 0; $i -le $filas.Count; $i++) { $ui.TablaCambios.RowDefinitions.Add((New-Object System.Windows.Controls.RowDefinition)) }
-        Add-CeldaTabla 0 0 'Campo' '#8E8E8E' $true
-        Add-CeldaTabla 0 1 'Ahora en Foticos Collection' '#8E8E8E' $true
-        Add-CeldaTabla 0 2 'Se enviará' '#8E8E8E' $true
+        Add-CeldaTabla 0 0 'Campo' '#8C929C' $true
+        Add-CeldaTabla 0 1 'Ahora en Foticos Collection' '#8C929C' $true
+        Add-CeldaTabla 0 2 'Se enviará' '#8C929C' $true
         $i = 1
         foreach ($c in $filas) {
-            Add-CeldaTabla $i 0 $c.etiqueta '#CFCFCF' $true
-            Add-CeldaTabla $i 1 (ConvertTo-TextoVisible $c.antes) $(if ($c.cambia) { '#F2A38B' } else { '#8E8E8E' })
-            Add-CeldaTabla $i 2 (ConvertTo-TextoVisible $c.despues) $(if ($c.cambia) { '#81C995' } else { '#8E8E8E' })
+            Add-CeldaTabla $i 0 $c.etiqueta '#CDCAC3' $true
+            Add-CeldaTabla $i 1 (ConvertTo-TextoVisible $c.antes) $(if ($c.cambia) { '#F2A38B' } else { '#8C929C' })
+            Add-CeldaTabla $i 2 (ConvertTo-TextoVisible $c.despues) $(if ($c.cambia) { '#81C995' } else { '#8C929C' })
             $i++
         }
         $avisos = @()
@@ -2584,7 +2591,7 @@ function Send-TasacionFC {
     if (-not $script:simulacion -or -not $script:conv.ficha) { return }
     $f = $script:conv.ficha
     $ui.BtnConfEnviar.IsEnabled = $false
-    $ui.TxtConfEstado.Foreground = Brush '#8E8E8E'
+    $ui.TxtConfEstado.Foreground = Brush '#8C929C'
     $ui.TxtConfEstado.Text = 'Enviando…'
     $mensajes = @($script:conv.mensajes | ForEach-Object {
         @{ rol = $_.rol; texto = $_.texto; adjuntos = @(@($_.adjuntos) | Where-Object { $_ } | ForEach-Object { Split-Path $_ -Leaf }) }
@@ -2632,7 +2639,7 @@ $ui.RadPRO.Add_Click({ $script:fcEntorno = 'PRO'; Save-Config; Update-Entorno; $
 $ui.BtnGuardarConexion.Add_Click({
     if ($ui.ClaveFC.Password) { Set-ClaveFC $ui.ClaveFC.Password.Trim(); $ui.ClaveFC.Clear() }
     if (-not (Get-ClaveFC)) { $ui.EstadoPanelFC.Text = 'Pega la clave antes de guardar.'; return }
-    $ui.EstadoPanelFC.Foreground = Brush '#8E8E8E'; $ui.EstadoPanelFC.Text = 'Probando la conexión…'
+    $ui.EstadoPanelFC.Foreground = Brush '#8C929C'; $ui.EstadoPanelFC.Text = 'Probando la conexión…'
     Invoke-FC 'GET' '/estado' $null {
         param($res, $err, $ctx)
         if ($err) { $ui.EstadoPanelFC.Foreground = Brush '#F28B82'; $ui.EstadoPanelFC.Text = "No conecta con $($script:fcEntorno): $err"; return }
@@ -2729,7 +2736,7 @@ function Invoke-YT([string]$metodo, [string]$ruta, $cuerpo, [scriptblock]$alTerm
     $timerHttp.Start()
 }
 
-function Show-ServidorYT([string]$mensaje = '', [string]$color = '#8E8E8E') {
+function Show-ServidorYT([string]$mensaje = '', [string]$color = '#8C929C') {
     $ui.YTUrl.Text = $script:ytUrl
     if (-not $ui.YTUsuario.Text) { $ui.YTUsuario.Text = $script:ytUsuario }
     if ($mensaje) { $ui.TxtYTServidorEstado.Text = $mensaje; $ui.TxtYTServidorEstado.Foreground = Brush $color }
@@ -2934,7 +2941,7 @@ function Save-CredYT {
     }
 }
 
-function New-TextoYT([string]$texto, [string]$color = '#ECECEC', [double]$tam = 13) {
+function New-TextoYT([string]$texto, [string]$color = '#ECE8E1', [double]$tam = 13) {
     $t = New-Object System.Windows.Controls.TextBlock
     $t.Text = $texto; $t.Foreground = Brush $color; $t.FontSize = $tam; $t.TextWrapping = 'Wrap'
     return $t
@@ -2957,7 +2964,7 @@ function Update-EstadoYT($e) {
     if ($e.codigo) {
         $ui.TxtYTAviso.Text = "1. Pulsa «Abrir la página de Google» (o entra en $($e.url_verificacion) desde el móvil).`n" +
             "2. Escribe este código.`n3. Entra con la cuenta de Google dueña del canal y acepta. Esto se actualiza solo."
-        $ui.TxtYTAviso.Foreground = Brush '#ECECEC'
+        $ui.TxtYTAviso.Foreground = Brush '#ECE8E1'
         if ($ui.TxtYTCodigo.Text -ne $e.codigo) { $ui.TxtYTCodigo.Text = $e.codigo }
         $ui.BtnYTAbrirGoogle.Tag = $e.url_verificacion
         $ui.YTCodigoCaja.Visibility = 'Visible'
@@ -2994,7 +3001,7 @@ function Update-EstadoYT($e) {
     [array]::Reverse($cola)
     foreach ($item in ($cola | Select-Object -First 150)) {
         $b = New-Object System.Windows.Controls.Border
-        $b.BorderBrush = Brush '#2A2A2A'; $b.BorderThickness = '0,0,0,1'; $b.Padding = '0,6'
+        $b.BorderBrush = Brush '#2A2E36'; $b.BorderThickness = '0,0,0,1'; $b.Padding = '0,6'
         $g = New-Object System.Windows.Controls.DockPanel
         $der = New-Object System.Windows.Controls.StackPanel
         $der.Orientation = 'Horizontal'; $der.VerticalAlignment = 'Top'
@@ -3006,13 +3013,13 @@ function Update-EstadoYT($e) {
             $l.Add_Click({ Start-Process $this.Tag })
             [void]$der.Children.Add($l)
         } else {
-            $color = switch ($item.estado) { 'error' { '#F28B82' } 'pendiente' { '#8E8E8E' } default { '#F2C46D' } }
+            $color = switch ($item.estado) { 'error' { '#F28B82' } 'pendiente' { '#8C929C' } default { '#F2C46D' } }
             $t = New-TextoYT $item.estado $color 12.5; $t.Margin = '6,2'
             [void]$der.Children.Add($t)
         }
         if ($item.estado -eq 'pendiente' -or $item.estado -eq 'error') {
             $q = New-Object System.Windows.Controls.Button
-            $q.Style = $win.FindResource('Plano'); $q.Padding = '6,2'; $q.Foreground = Brush '#B4B4B4'; $q.FontSize = 12
+            $q.Style = $win.FindResource('Plano'); $q.Padding = '6,2'; $q.Foreground = Brush '#ACB1B9'; $q.FontSize = 12
             $q.Content = 'Quitar'; $q.Tag = $item.id
             $q.Add_Click({
                 Invoke-YT 'POST' '/api/cola/quitar' @{ ids = @($this.Tag) } {
@@ -3024,7 +3031,7 @@ function Update-EstadoYT($e) {
             [void]$der.Children.Add($q)
         }
         $izq = New-Object System.Windows.Controls.StackPanel
-        [void]$izq.Children.Add((New-TextoYT $item.titulo '#ECECEC' 13))
+        [void]$izq.Children.Add((New-TextoYT $item.titulo '#ECE8E1' 13))
         if ($item.error) { [void]$izq.Children.Add((New-TextoYT $item.error '#F28B82' 12)) }
         [void]$g.Children.Add($der); [void]$g.Children.Add($izq)
         $b.Child = $g
@@ -3041,15 +3048,15 @@ function Set-Modo([string]$modo) {
     # Cada modo con su cara: en YouTube el logo, el título y el color pasan a rojo.
     $ui.LogoTexto.Text = if ($yt) { 'YouTube' } else { 'Valora' }
     $ui.BtnEstilo.Visibility = if ($yt) { 'Collapsed' } else { 'Visible' }
-    $ui.LogoFondo.Background = Brush $(if ($yt) { '#E62117' } else { '#ECECEC' })
+    $ui.LogoFondo.Background = Brush $(if ($yt) { '#E62117' } else { '#C8A15A' })
     $ui.LogoLetra.FontFamily = if ($yt) { 'Segoe MDL2 Assets' } else { 'Segoe UI' }
     $ui.LogoLetra.Text = if ($yt) { [string][char]0xE768 } else { 'V' }
     $ui.LogoLetra.FontSize = if ($yt) { 13 } else { 17 }
-    $ui.LogoLetra.Foreground = Brush $(if ($yt) { '#FFFFFF' } else { '#171717' })
-    $ui.Lateral.Background = Brush $(if ($yt) { '#1A1414' } else { '#171717' })
+    $ui.LogoLetra.Foreground = Brush $(if ($yt) { '#FFFFFF' } else { '#14161A' })
+    $ui.Lateral.Background = Brush $(if ($yt) { '#1A1414' } else { '#14161A' })
     $win.Title = if ($yt) { 'Valora · YouTube' } else { 'Valora' }
     $ui.BtnModoYT.Background = Brush $(if ($yt) { '#C4302B' } else { '#00000000' })
-    $ui.BtnModoValora.Background = Brush $(if ($yt) { '#00000000' } else { '#3A3A3A' })
+    $ui.BtnModoValora.Background = Brush $(if ($yt) { '#00000000' } else { '#363C47' })
     if ($yt) {
         if (-not (Get-TokenYT)) {
             Show-ServidorYT 'Entra con el usuario y la contraseña de la web de resubida.'
