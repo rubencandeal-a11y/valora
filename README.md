@@ -20,6 +20,12 @@ Para publicar una versión nueva desde el PC de desarrollo:
 PUBLICAR.bat "qué ha cambiado"
 ```
 
+## YouTube
+
+Arriba a la izquierda hay un selector Valora / YouTube. En YouTube, Valora enseña el listado del canal para elegir vídeos (sueltos o por playlist) y volver a subirlos. No sube nada ella misma: habla con la web de resubida que corre en el PC de Rubén (proyecto `Documents\youtube`), que es donde están los vídeos y el permiso de YouTube.
+
+La primera vez pide la dirección de esa web, el usuario y la contraseña. Guarda un token cifrado para el usuario de Windows que vale 30 días; la contraseña no se guarda.
+
 ## Qué guarda y dónde
 
 | Qué | Dónde |

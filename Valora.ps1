@@ -42,7 +42,7 @@ function Quote-Arg([string]$s) {
 }
 
 function Load-Config {
-    $cfg = @{ workspace = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tasaciones'); auto = $true; carpetas = @(); fcEntorno = 'PRE'; fcClaves = @{} }
+    $cfg = @{ workspace = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tasaciones'); auto = $true; carpetas = @(); fcEntorno = 'PRE'; fcClaves = @{}; ytUrl = ''; ytUsuario = ''; ytToken = $null; modo = 'valora' }
     if (Test-Path $ConfigFile) {
         try {
             $j = Get-Content $ConfigFile -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -50,6 +50,7 @@ function Load-Config {
             if ($null -ne $j.auto) { $cfg.auto = [bool]$j.auto }
             if ($j.carpetas) { $cfg.carpetas = @($j.carpetas) }
             if ($j.fcEntorno) { $cfg.fcEntorno = $j.fcEntorno }
+            foreach ($k in 'ytUrl', 'ytUsuario', 'ytToken', 'modo') { if ($j.$k) { $cfg[$k] = $j.$k } }
             if ($j.fcClaves) { foreach ($pr in $j.fcClaves.PSObject.Properties) { $cfg.fcClaves[$pr.Name] = $pr.Value } }
         } catch {}
     }
@@ -57,7 +58,8 @@ function Load-Config {
 }
 
 function Save-Config {
-    @{ workspace = $script:workspace; auto = [bool]$ui.ChkAuto.IsChecked; carpetas = @($script:carpetas); fcEntorno = $script:fcEntorno; fcClaves = $script:fcClaves } |
+    @{ workspace = $script:workspace; auto = [bool]$ui.ChkAuto.IsChecked; carpetas = @($script:carpetas); fcEntorno = $script:fcEntorno; fcClaves = $script:fcClaves
+       ytUrl = $script:ytUrl; ytUsuario = $script:ytUsuario; ytToken = $script:ytToken; modo = $script:modo } |
         ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
 }
 
@@ -71,6 +73,10 @@ $script:archivos = New-Object System.Collections.ArrayList
 $script:fcEntorno = $cfg.fcEntorno
 $script:fcClaves = $cfg.fcClaves      # entorno -> clave cifrada con DPAPI (solo la descifra este usuario de Windows)
 $script:fichaPendiente = $null        # ficha que abrirá la próxima conversación
+$script:ytUrl = $cfg.ytUrl            # web de resubida de YouTube (vacía: la de este PC)
+$script:ytUsuario = $cfg.ytUsuario
+$script:ytToken = $cfg.ytToken        # token de esa web, cifrado con DPAPI como las claves de Foticos Collection
+$script:modo = 'valora'               # 'valora' o 'youtube'; se aplica al arrancar
 
 $script:proc = $null
 $script:outTask = $null
@@ -153,6 +159,43 @@ $script:pensando = $true
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Margin" Value="12,18,12,6"/>
     </Style>
+
+    <Style x:Key="FilaYT" TargetType="ListViewItem">
+      <Setter Property="Foreground" Value="#ECECEC"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListViewItem">
+            <Border x:Name="b" Background="Transparent" Padding="0,5" BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+              <GridViewRowPresenter VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#262626"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="Background" Value="#1F3A2E"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Seleccionable}" Value="False">
+          <Setter Property="Foreground" Value="#7A7A7A"/>
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <Style x:Key="CabeceraYT" TargetType="GridViewColumnHeader">
+      <Setter Property="Foreground" Value="#8E8E8E"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="GridViewColumnHeader">
+            <Border Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="0,0,0,1" Padding="6,7">
+              <ContentPresenter HorizontalAlignment="Left"/>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Window.Resources>
 
   <Grid>
@@ -189,6 +232,24 @@ $script:pensando = $true
               </Button.Template>
             </Button>
           </StackPanel>
+          <Border Background="#202020" CornerRadius="10" Padding="3" Margin="2,0,2,12">
+            <UniformGrid Columns="2">
+              <Button x:Name="BtnModoValora" Style="{StaticResource Plano}" Padding="8,6" HorizontalContentAlignment="Center" Background="#3A3A3A">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BD;" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                  <TextBlock Text="Valora"/>
+                </StackPanel>
+              </Button>
+              <Button x:Name="BtnModoYT" Style="{StaticResource Plano}" Padding="8,6" HorizontalContentAlignment="Center"
+                      ToolTip="Elegir vídeos del canal y volver a subirlos">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE714;" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                  <TextBlock Text="YouTube"/>
+                </StackPanel>
+              </Button>
+            </UniformGrid>
+          </Border>
+          <StackPanel x:Name="LateralArriba">
           <Button x:Name="BtnNueva" Style="{StaticResource Plano}">
             <StackPanel Orientation="Horizontal">
               <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" VerticalAlignment="Center" Margin="0,0,10,0"/>
@@ -215,9 +276,11 @@ $script:pensando = $true
               <TextBlock Text="Conectar carpeta"/>
             </StackPanel>
           </Button>
+          </StackPanel>
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom">
+          <StackPanel x:Name="LateralAbajo">
           <CheckBox x:Name="ChkAuto" Foreground="#B4B4B4" Margin="12,0,0,10" FontSize="13"
                     Content="Modo automático (no pide permisos)"
                     ToolTip="agy lee, crea archivos y ejecuta comandos sin preguntar"/>
@@ -237,10 +300,11 @@ $script:pensando = $true
                       HorizontalAlignment="Right" VerticalAlignment="Center" Content="Cerrar sesión"/>
             </Grid>
           </Border>
+          </StackPanel>
           <TextBlock x:Name="TxtEstado" Foreground="#8E8E8E" FontSize="12" TextWrapping="Wrap" Margin="12,10,8,0"/>
           <TextBlock x:Name="TxtVersion" Foreground="#5A5A5A" FontSize="11" Margin="12,4,8,0"/>
         </StackPanel>
-        <DockPanel Margin="0,4,0,8">
+        <DockPanel x:Name="LateralMedio" Margin="0,4,0,8">
           <StackPanel DockPanel.Dock="Top">
             <TextBlock Text="FOTICOS COLLECTION" Style="{StaticResource Seccion}"/>
             <Button x:Name="BtnFichas" Style="{StaticResource Plano}">
@@ -361,6 +425,158 @@ $script:pensando = $true
         <TextBlock Grid.Row="2" Text="Enter envía · Shift+Enter nueva línea · Valora puede equivocarse: revisa lo importante."
                    Foreground="#6E6E6E" FontSize="11.5" HorizontalAlignment="Center" Margin="0,8,0,0"/>
       </Grid>
+    </Grid>
+
+    <!-- YouTube: elegir vídeos del canal y volver a subirlos (habla con la web de Documents\youtube) -->
+    <Grid x:Name="PanelYT" Grid.Column="1" Background="#212121" Visibility="Collapsed" Panel.ZIndex="4">
+      <DockPanel Margin="24,18,24,14">
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+          <StackPanel>
+            <TextBlock Text="Resubir vídeos de YouTube" FontSize="20" FontWeight="SemiBold"/>
+            <TextBlock x:Name="TxtYTResumen" Foreground="#8E8E8E" FontSize="12.5" Margin="0,2,0,0"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+            <Border x:Name="ChipYTCanal" CornerRadius="10" Padding="10,4" Background="#4A2323" VerticalAlignment="Center">
+              <TextBlock x:Name="TxtYTCanal" Text="Sin conectar" FontSize="12.5" Foreground="White"/>
+            </Border>
+            <Button x:Name="BtnYTConectar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Margin="6,0,0,0" Content="Conectar YouTube"
+                    ToolTip="Entrar con la cuenta de Google dueña del canal al que se suben los vídeos"/>
+            <Button x:Name="BtnYTActualizar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Actualizar listado"
+                    ToolTip="Vuelve a leer la lista de vídeos del canal"/>
+            <Button x:Name="BtnYTServidor" Style="{StaticResource Plano}" Foreground="#B4B4B4" Content="Servidor"
+                    ToolTip="Dirección de la web, usuario y contraseña"/>
+          </StackPanel>
+        </Grid>
+
+        <Border x:Name="ChipYTTrabajo" DockPanel.Dock="Top" CornerRadius="10" Padding="12,6" Margin="0,0,0,10" Background="#1E2A24"
+                HorizontalAlignment="Left" Visibility="Collapsed">
+          <TextBlock x:Name="TxtYTTrabajo" FontSize="13" TextWrapping="Wrap"/>
+        </Border>
+
+        <Border x:Name="YTServidor" DockPanel.Dock="Top" Background="#1E1E1E" CornerRadius="12" Padding="14,12" Margin="0,0,0,12" Visibility="Collapsed">
+          <StackPanel>
+            <TextBlock Text="Conexión con la web de resubida" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="Dirección de la web (te la da Rubén; en su propio PC se puede dejar vacía):" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
+            <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2" Margin="0,0,0,8">
+              <TextBox x:Name="YTUrl" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+            </Border>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel Margin="0,0,8,0">
+                <TextBlock Text="Usuario" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
+                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
+                  <TextBox x:Name="YTUsuario" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+                </Border>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                <TextBlock Text="Contraseña" Foreground="#B4B4B4" FontSize="12.5" Margin="0,0,0,4"/>
+                <Border Background="#141414" CornerRadius="8" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,2">
+                  <PasswordBox x:Name="YTClave" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,6"/>
+                </Border>
+              </StackPanel>
+              <Button x:Name="BtnYTEntrar" Grid.Column="2" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717"
+                      Padding="16,7" FontWeight="SemiBold" VerticalAlignment="Bottom" Content="Entrar"/>
+            </Grid>
+            <TextBlock x:Name="TxtYTServidorEstado" Foreground="#8E8E8E" FontSize="12.5" Margin="0,8,0,0" TextWrapping="Wrap"
+                       Text="Valora guarda la sesión cifrada para tu usuario de Windows: solo hay que entrar una vez."/>
+          </StackPanel>
+        </Border>
+
+        <Border x:Name="YTAviso" DockPanel.Dock="Top" Background="#1E2A24" BorderBrush="#2E7D5A" BorderThickness="1" CornerRadius="12"
+                Padding="14,12" Margin="0,0,0,12" Visibility="Collapsed">
+          <StackPanel>
+            <TextBlock x:Name="TxtYTAviso" TextWrapping="Wrap" LineHeight="21"/>
+            <StackPanel x:Name="YTCodigoCaja" Orientation="Horizontal" Margin="0,10,0,0">
+              <TextBox x:Name="TxtYTCodigo" IsReadOnly="True" FontFamily="Consolas" FontSize="24" FontWeight="Bold" Background="Transparent"
+                       BorderThickness="0" Foreground="White" VerticalAlignment="Center" Margin="0,0,14,0"/>
+              <Button x:Name="BtnYTCopiar" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="12,6"
+                      FontWeight="SemiBold" Content="Copiar código" VerticalAlignment="Center"/>
+              <Button x:Name="BtnYTAbrirGoogle" Style="{StaticResource Plano}" Background="#2E7D5A" Foreground="White" Padding="12,6"
+                      Margin="8,0,0,0" FontWeight="SemiBold" Content="Abrir la página de Google" VerticalAlignment="Center"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <Border Background="#1A1A1A" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1" Padding="10,2">
+            <Grid>
+              <TextBox x:Name="YTBuscar" Background="Transparent" BorderThickness="0" Foreground="#ECECEC" CaretBrush="#ECECEC" Padding="0,7"/>
+              <TextBlock x:Name="YTBuscarPista" Text="Buscar por título o fecha" Foreground="#6E6E6E" IsHitTestVisible="False" VerticalAlignment="Center" Margin="2,0"/>
+            </Grid>
+          </Border>
+          <ComboBox x:Name="YTPlaylist" Grid.Column="1" Margin="8,0,0,0" MinWidth="170" VerticalContentAlignment="Center"/>
+          <ComboBox x:Name="YTTipo" Grid.Column="2" Margin="8,0,0,0" MinWidth="130" VerticalContentAlignment="Center">
+            <ComboBoxItem Content="Vídeos y shorts" Tag="" IsSelected="True"/>
+            <ComboBoxItem Content="Solo vídeos" Tag="Vídeo"/>
+            <ComboBoxItem Content="Solo shorts" Tag="Short"/>
+          </ComboBox>
+          <ComboBox x:Name="YTEstado" Grid.Column="3" Margin="8,0,0,0" MinWidth="140" VerticalContentAlignment="Center">
+            <ComboBoxItem Content="Cualquier estado" Tag="" IsSelected="True"/>
+            <ComboBoxItem Content="Sin resubir" Tag="no"/>
+            <ComboBoxItem Content="Ya resubidos" Tag="si"/>
+            <ComboBoxItem Content="En la cola" Tag="cola"/>
+          </ComboBox>
+        </Grid>
+
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock x:Name="TxtYTSel" Foreground="#CFCFCF" FontSize="13" VerticalAlignment="Center" Margin="2,0,10,0"/>
+            <Button x:Name="BtnYTTodos" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="8,5" FontSize="13" Content="Seleccionar los filtrados"/>
+            <Button x:Name="BtnYTNinguno" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="8,5" FontSize="13" Content="Quitar selección"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <ComboBox x:Name="YTPrivacidad" MinWidth="110" VerticalContentAlignment="Center" ToolTip="Cómo quedan los vídeos nuevos">
+              <ComboBoxItem Content="Privados" Tag="private" IsSelected="True"/>
+              <ComboBoxItem Content="Ocultos" Tag="unlisted"/>
+              <ComboBoxItem Content="Públicos" Tag="public"/>
+            </ComboBox>
+            <Button x:Name="BtnYTResubir" Style="{StaticResource Plano}" Background="#2E7D5A" Foreground="White" Padding="14,6"
+                    Margin="8,0,0,0" FontWeight="SemiBold" Content="Resubir seleccionados" IsEnabled="False"/>
+          </StackPanel>
+        </Grid>
+
+        <TextBlock DockPanel.Dock="Bottom" Foreground="#6E6E6E" FontSize="11.5" Margin="2,6,0,0"
+                   Text="Ctrl o Mayús + clic para elegir varios · doble clic abre el vídeo en YouTube"/>
+
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="300"/>
+          </Grid.ColumnDefinitions>
+          <ListView x:Name="YTLista" Background="#1A1A1A" BorderThickness="0" Foreground="#ECECEC" SelectionMode="Extended"
+                    ItemContainerStyle="{StaticResource FilaYT}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+            <ListView.View>
+              <GridView ColumnHeaderContainerStyle="{StaticResource CabeceraYT}">
+                <GridViewColumn Header="Subido" Width="88" DisplayMemberBinding="{Binding Fecha}"/>
+                <GridViewColumn Header="Título" Width="230" DisplayMemberBinding="{Binding Titulo}"/>
+                <GridViewColumn Header="Playlist" Width="100" DisplayMemberBinding="{Binding Playlists}"/>
+                <GridViewColumn Header="Tipo" Width="60" DisplayMemberBinding="{Binding Tipo}"/>
+                <GridViewColumn Header="Vistas" Width="70" DisplayMemberBinding="{Binding Vistas}"/>
+                <GridViewColumn Header="Estado" Width="130" DisplayMemberBinding="{Binding Estado}"/>
+              </GridView>
+            </ListView.View>
+          </ListView>
+          <Border Grid.Column="1" Background="#1A1A1A" CornerRadius="12" Padding="14,12" Margin="12,0,0,0">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Top" Text="Cola de resubida" FontWeight="SemiBold" FontSize="15"/>
+              <TextBlock x:Name="TxtYTCola" DockPanel.Dock="Top" Foreground="#8E8E8E" FontSize="12.5" Margin="0,4,0,8" TextWrapping="Wrap" Text="Vacía."/>
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="YTCola"/>
+              </ScrollViewer>
+            </DockPanel>
+          </Border>
+        </Grid>
+      </DockPanel>
     </Grid>
 
     <!-- Fichas por tasar de Foticos Collection -->
@@ -518,7 +734,12 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'TxtBarraEstado','BtnAbrirFicha','BtnRevisarEnviar','PanelFC','PanelEntorno','TxtPanelEntorno','BtnConexionFC',
                'BtnCerrarFC','ConexionFC','RadPRE','RadPRO','ClaveFC','BtnGuardarConexion','BuscarFC','EstadoFC','BtnBuscarFC',
                'BtnMasFC','EstadoPanelFC','ListaFC','PanelConfirmar','ConfEntorno','TxtConfEntorno','TxtConfPieza','TxtConfAviso',
-               'TxtConfEstado','BtnConfCancelar','BtnConfEnviar','TablaCambios') {
+               'TxtConfEstado','BtnConfCancelar','BtnConfEnviar','TablaCambios',
+               'BtnModoValora','BtnModoYT','PanelYT','TxtYTResumen','ChipYTCanal','TxtYTCanal','BtnYTConectar','BtnYTActualizar',
+               'BtnYTServidor','ChipYTTrabajo','TxtYTTrabajo','YTServidor','YTUrl','YTUsuario','YTClave','BtnYTEntrar',
+               'TxtYTServidorEstado','YTAviso','TxtYTAviso','YTCodigoCaja','TxtYTCodigo','BtnYTCopiar','BtnYTAbrirGoogle',
+               'YTBuscar','YTBuscarPista','YTPlaylist','YTTipo','YTEstado','TxtYTSel','BtnYTTodos','BtnYTNinguno',
+               'YTPrivacidad','BtnYTResubir','YTLista','TxtYTCola','YTCola','LateralArriba','LateralMedio','LateralAbajo') {
     $ui[$n] = $win.FindName($n)
 }
 $icono = Join-Path $ConfigDir 'valora.ico'
@@ -653,7 +874,7 @@ function Update-ListaConv {
         [void]$sp.Children.Add($t); [void]$sp.Children.Add($f)
         $btn.Content = $sp
         $btn.ToolTip = $c.titulo
-        $btn.Add_Click({ Open-Conv $this.Tag })
+        $btn.Add_Click({ Set-Modo 'valora'; Open-Conv $this.Tag })
         $x = New-Object System.Windows.Controls.Button
         $x.Style = $win.FindResource('Plano'); $x.Padding = '7'; $x.HorizontalAlignment = 'Right'; $x.VerticalAlignment = 'Center'
         $x.Tag = $c.id; $x.ToolTip = 'Borrar conversación'
@@ -1356,6 +1577,7 @@ foreach ($chip in $ui.Sugerencias.Children) {
 }
 
 $ui.BtnNueva.Add_Click({
+    Set-Modo 'valora'
     New-ConvVacia
     Set-Estado 'Conversación nueva. La anterior queda guardada en la lista.'
     $ui.Prompt.Focus() | Out-Null
@@ -1452,6 +1674,7 @@ function Read-ErrorHttp($tarea) {
     if ($ex) { $ex = $ex.GetBaseException() }
     $msg = if ($ex) { $ex.Message } else { 'petición cancelada' }
     if ($ex -is [System.Net.WebException] -and $ex.Response) {
+        $script:httpCodigo = [int]$ex.Response.StatusCode
         try {
             $cuerpo = (New-Object System.IO.StreamReader($ex.Response.GetResponseStream(), [Text.Encoding]::UTF8)).ReadToEnd()
             $j = $cuerpo | ConvertFrom-Json
@@ -1467,7 +1690,7 @@ $timerHttp.Add_Tick({
     foreach ($p in @($script:httpPend)) {
         if (-not $p.tarea.IsCompleted) { continue }
         [void]$script:httpPend.Remove($p)
-        $res = $null; $err = $null
+        $res = $null; $err = $null; $script:httpCodigo = 0
         if ($p.tarea.IsFaulted -or $p.tarea.IsCanceled) { $err = Read-ErrorHttp $p.tarea }
         elseif ($p.json) { try { $res = $p.tarea.Result | ConvertFrom-Json } catch { $err = 'Respuesta no válida del servidor.' } }
         else { $res = $true }
@@ -1852,6 +2075,410 @@ $win.Add_PreviewKeyDown({
 # Valora mira en GitHub el último commit del repositorio. Si cambió, descarga Valora.ps1 de ese
 # commit exacto (sin cachés), comprueba que se puede leer, se reemplaza y se reinicia.
 # Además, una vez al día, actualiza agy con "agy update".
+# --- YouTube: elegir vídeos del canal y volver a subirlos.
+# El trabajo lo hace la web de Documents\youtube (web.py), que corre en el PC de Rubén con los
+# vídeos descargados y el permiso de YouTube. Valora solo habla con su API: entra una vez con
+# usuario y contraseña, guarda el token cifrado y desde ahí lista, encola y enseña la cola.
+if (-not ('ValoraFilaYT' -as [type])) {
+    Add-Type -TypeDefinition @'
+public class ValoraFilaYT {
+    public string Id { get; set; }
+    public string Fecha { get; set; }
+    public string Titulo { get; set; }
+    public string Playlists { get; set; }
+    public string Tipo { get; set; }
+    public string Vistas { get; set; }
+    public string Estado { get; set; }
+    public string Url { get; set; }
+    public bool Seleccionable { get; set; }
+}
+'@
+}
+$script:ytVideos = @()
+$script:ytFiltrados = $null
+$script:ytSel = New-Object 'System.Collections.Generic.HashSet[string]'
+$script:ytPintando = $false
+$script:ytCargando = $null
+$script:ytPidiendoEstado = $null
+$script:ytEstado = $null
+$script:ytTicks = 0
+
+function Get-UrlYT {
+    if ($script:ytUrl) { return $script:ytUrl.TrimEnd('/') }
+    return 'http://127.0.0.1:8080'   # en el PC de Rubén, donde corre la web
+}
+
+function Get-TokenYT {
+    if (-not $script:ytToken) { return $null }
+    try {
+        $seguro = ConvertTo-SecureString $script:ytToken -ErrorAction Stop
+        $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($seguro)
+        try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
+    } catch { return $null }
+}
+
+function Set-TokenYT([string]$token) {
+    $script:ytToken = if ($token) { ConvertTo-SecureString $token -AsPlainText -Force | ConvertFrom-SecureString } else { $null }
+    Save-Config
+}
+
+function Invoke-YT([string]$metodo, [string]$ruta, $cuerpo, [scriptblock]$alTerminar, $ctx = $null) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072
+    $wc = New-Object System.Net.WebClient
+    $wc.Encoding = [System.Text.Encoding]::UTF8
+    $wc.Headers['User-Agent'] = 'Valora'
+    $wc.Headers['Accept'] = 'application/json'
+    $token = Get-TokenYT
+    if ($token) { $wc.Headers['Authorization'] = 'Bearer ' + $token }
+    $url = (Get-UrlYT) + $ruta
+    try {
+        if ($metodo -eq 'GET') {
+            $tarea = $wc.DownloadStringTaskAsync($url)
+        } else {
+            $wc.Headers['Content-Type'] = 'application/json; charset=utf-8'
+            $tarea = $wc.UploadStringTaskAsync($url, $metodo, ($cuerpo | ConvertTo-Json -Depth 4 -Compress))
+        }
+    } catch {
+        & $alTerminar $null $_.Exception.Message $ctx
+        return
+    }
+    [void]$script:httpPend.Add(@{ tarea = $tarea; alTerminar = $alTerminar; ctx = $ctx; json = $true })
+    $timerHttp.Start()
+}
+
+function Show-ServidorYT([string]$mensaje = '', [string]$color = '#8E8E8E') {
+    $ui.YTUrl.Text = $script:ytUrl
+    if (-not $ui.YTUsuario.Text) { $ui.YTUsuario.Text = $script:ytUsuario }
+    if ($mensaje) { $ui.TxtYTServidorEstado.Text = $mensaje; $ui.TxtYTServidorEstado.Foreground = Brush $color }
+    $ui.YTServidor.Visibility = 'Visible'
+}
+
+# Un 401 es que la sesión ya no vale (caducó o cambió la contraseña): se vuelve a pedir.
+function Test-CaducadoYT {
+    if ($script:httpCodigo -ne 401) { return $false }
+    Set-TokenYT $null
+    Show-ServidorYT 'La sesión ha caducado o ha cambiado la contraseña. Vuelve a entrar.' '#F2C46D'
+    return $true
+}
+
+function Show-ErrorRedYT([string]$err) {
+    if (Test-CaducadoYT) { return }
+    Show-ServidorYT ("No se llega a la web: $err. Comprueba que está arrancada en el PC de Rubén; " +
+        'si la ha reiniciado, la dirección cambia y hay que pegar la nueva.') '#F28B82'
+}
+
+function Enter-YT {
+    $url = $ui.YTUrl.Text.Trim().TrimEnd('/')
+    if ($url -and $url -notmatch '^https?://') { $url = 'https://' + $url }
+    $usuario = $ui.YTUsuario.Text.Trim()
+    $clave = $ui.YTClave.Password
+    if (-not $usuario -or -not $clave) { Show-ServidorYT 'Escribe el usuario y la contraseña de la web.' '#F2C46D'; return }
+    $script:ytUrl = $url; $script:ytUsuario = $usuario
+    $ui.YTUrl.Text = $url
+    Set-TokenYT $null
+    $ui.BtnYTEntrar.IsEnabled = $false
+    Show-ServidorYT 'Entrando…'
+    Invoke-YT 'POST' '/api/entrar' @{ usuario = $usuario; 'contraseña' = $clave } {
+        param($res, $err)
+        $ui.BtnYTEntrar.IsEnabled = $true
+        if ($err) { Show-ServidorYT "No se ha podido entrar: $err" '#F28B82'; return }
+        Set-TokenYT $res.token
+        $ui.YTClave.Password = ''
+        $ui.TxtYTServidorEstado.Text = ''
+        $ui.YTServidor.Visibility = 'Collapsed'
+        Get-VideosYT
+        Get-EstadoYT
+    }
+}
+
+function Get-ValorCombo($combo) {
+    if ($combo.SelectedItem -and $null -ne $combo.SelectedItem.Tag) { return [string]$combo.SelectedItem.Tag }
+    return ''
+}
+
+function Get-VideosYT {
+    if (($script:ytCargando -and ((Get-Date) - $script:ytCargando).TotalSeconds -lt 60) -or -not (Get-TokenYT)) { return }
+    $script:ytCargando = Get-Date
+    if (-not $script:ytVideos.Count) { $ui.TxtYTResumen.Text = 'Cargando el listado…' }
+    Invoke-YT 'GET' '/api/videos' $null {
+        param($res, $err)
+        $script:ytCargando = $null
+        if ($err) { Show-ErrorRedYT $err; return }
+        $script:ytVideos = @($res.videos)
+        $actual = Get-ValorCombo $ui.YTPlaylist
+        $ui.YTPlaylist.Items.Clear()
+        foreach ($p in @(@('Todas las playlists', ''), @('Sin playlist', '-')) + @($res.playlists | ForEach-Object { , @($_, $_) })) {
+            $item = New-Object System.Windows.Controls.ComboBoxItem
+            $item.Content = $p[0]; $item.Tag = $p[1]
+            [void]$ui.YTPlaylist.Items.Add($item)
+            if ($p[1] -eq $actual) { $ui.YTPlaylist.SelectedItem = $item }
+        }
+        if ($ui.YTPlaylist.SelectedIndex -lt 0) { $ui.YTPlaylist.SelectedIndex = 0 }
+        $resubidos = @($script:ytVideos | Where-Object { $_.resubido }).Count
+        $ui.TxtYTResumen.Text = "$($script:ytVideos.Count) vídeos · $resubidos resubidos · listado del $($res.generado)"
+        Update-ListaYT
+    }
+}
+
+function Get-EstadoVideoYT($v) {
+    if ($v.resubido) { return 'Resubido' }
+    if ($v.cola) { return "En cola: $($v.cola)" }
+    if ($v.descargado) { return 'Descargado' }
+    return ''
+}
+
+function Update-ListaYT {
+    if ($script:ytPintando) { return }
+    $texto = $ui.YTBuscar.Text.Trim().ToLower()
+    $playlist = Get-ValorCombo $ui.YTPlaylist
+    $tipo = Get-ValorCombo $ui.YTTipo
+    $est = Get-ValorCombo $ui.YTEstado
+    $es = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
+    $filas = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
+    foreach ($v in $script:ytVideos) {
+        $listas = @($v.playlists)
+        if ($texto -and -not ($v.titulo.ToLower().Contains($texto) -or ([string]$v.fecha).Contains($texto))) { continue }
+        if ($playlist -eq '-' -and $listas.Count) { continue }
+        if ($playlist -and $playlist -ne '-' -and $listas -notcontains $playlist) { continue }
+        if ($tipo -and $v.tipo -ne $tipo) { continue }
+        if (($est -eq 'si' -and -not $v.resubido) -or ($est -eq 'no' -and $v.resubido) -or ($est -eq 'cola' -and -not $v.cola)) { continue }
+        $f = New-Object ValoraFilaYT
+        $f.Id = $v.id; $f.Titulo = $v.titulo; $f.Tipo = $v.tipo
+        $f.Fecha = if ($v.fecha) { $v.fecha } else { '—' }
+        $f.Playlists = if ($listas.Count) { $listas -join ', ' } else { 'Sin playlist' }
+        $f.Vistas = ([long]$v.vistas).ToString('N0', $es)
+        $f.Estado = Get-EstadoVideoYT $v
+        $f.Url = if ($v.resubido) { "https://www.youtube.com/watch?v=$($v.resubido)" } else { $v.url }
+        $f.Seleccionable = (-not $v.resubido) -and (-not $v.cola -or $v.cola -eq 'error')
+        if (-not $f.Seleccionable) { [void]$script:ytSel.Remove($f.Id) }
+        $filas.Add($f)
+    }
+    $script:ytFiltrados = $filas
+    $script:ytPintando = $true
+    try {
+        $ui.YTLista.ItemsSource = $filas
+        foreach ($f in $filas) { if ($script:ytSel.Contains($f.Id)) { [void]$ui.YTLista.SelectedItems.Add($f) } }
+    } finally { $script:ytPintando = $false }
+    Update-SeleccionYT
+}
+
+function Update-SeleccionYT {
+    $total = if ($script:ytFiltrados) { $script:ytFiltrados.Count } else { 0 }
+    $ui.TxtYTSel.Text = "$($script:ytSel.Count) seleccionados · $total en el filtro"
+    $ui.BtnYTResubir.IsEnabled = $script:ytSel.Count -gt 0
+}
+
+function Send-ResubirYT {
+    $ids = @($script:ytSel)
+    if (-not $ids.Count) { return }
+    $item = $ui.YTPrivacidad.SelectedItem
+    $canal = if ($script:ytEstado -and $script:ytEstado.youtube_conectado) { $script:ytEstado.canal } else { $null }
+    $aviso = if ($canal) { "al canal `"$canal`"" } else { "(YouTube todavía no está conectado: se subirán al canal que se conecte)" }
+    $r = [System.Windows.MessageBox]::Show($win, "Se van a volver a subir $($ids.Count) vídeos $aviso como $(([string]$item.Content).ToLower()).`n`n¿Seguir?",
+        'Resubir vídeos', 'YesNo', 'Question')
+    if ($r -ne 'Yes') { return }
+    $ui.BtnYTResubir.IsEnabled = $false
+    Invoke-YT 'POST' '/api/cola' @{ ids = $ids; privacidad = [string]$item.Tag } {
+        param($res, $err)
+        if ($err) { Update-SeleccionYT; Show-ErrorRedYT $err; return }
+        # Sin ventanas modales aquí: esto corre dentro del temporizador que atiende las peticiones.
+        $script:ytSel.Clear()
+        Set-Estado "$($res.añadidos) vídeos añadidos a la cola." '#81C995'
+        Get-VideosYT
+        Get-EstadoYT
+    }
+}
+
+function Get-EstadoYT {
+    # Si una petición se quedó sin respuesta, a los 30 s se deja pedir otra.
+    if (($script:ytPidiendoEstado -and ((Get-Date) - $script:ytPidiendoEstado).TotalSeconds -lt 30) -or -not (Get-TokenYT)) { return }
+    $script:ytPidiendoEstado = Get-Date
+    Invoke-YT 'GET' '/api/estado' $null {
+        param($res, $err)
+        $script:ytPidiendoEstado = $null
+        if ($err) {
+            if (Test-CaducadoYT) { return }
+            $ui.TxtYTCanal.Text = 'Sin conexión con la web'; $ui.ChipYTCanal.Background = Brush '#4A2323'
+            return
+        }
+        $script:ytEstado = $res
+        Update-EstadoYT $res
+    }
+}
+
+function New-TextoYT([string]$texto, [string]$color = '#ECECEC', [double]$tam = 13) {
+    $t = New-Object System.Windows.Controls.TextBlock
+    $t.Text = $texto; $t.Foreground = Brush $color; $t.FontSize = $tam; $t.TextWrapping = 'Wrap'
+    return $t
+}
+
+function Update-EstadoYT($e) {
+    if ($e.youtube_conectado) {
+        $ui.TxtYTCanal.Text = 'Sube al canal: ' + $(if ($e.canal) { $e.canal } else { 'conectado' })
+        $ui.ChipYTCanal.Background = Brush '#1F4A35'
+    } elseif ($e.conectando) {
+        $ui.TxtYTCanal.Text = 'Esperando login de Google…'; $ui.ChipYTCanal.Background = Brush '#5A4512'
+    } else {
+        $ui.TxtYTCanal.Text = 'YouTube sin conectar'; $ui.ChipYTCanal.Background = Brush '#4A2323'
+    }
+    $ui.BtnYTConectar.Visibility = if ($e.conectando) { 'Collapsed' } else { 'Visible' }
+    $ui.BtnYTConectar.Content = if ($e.youtube_conectado) { 'Cambiar cuenta' } else { 'Conectar YouTube' }
+
+    if ($e.codigo) {
+        $ui.TxtYTAviso.Text = "1. Pulsa «Abrir la página de Google» (o entra en $($e.url_verificacion) desde el móvil).`n" +
+            "2. Escribe este código.`n3. Entra con la cuenta de Google dueña del canal y acepta. Esto se actualiza solo."
+        $ui.TxtYTAviso.Foreground = Brush '#ECECEC'
+        if ($ui.TxtYTCodigo.Text -ne $e.codigo) { $ui.TxtYTCodigo.Text = $e.codigo }
+        $ui.BtnYTAbrirGoogle.Tag = $e.url_verificacion
+        $ui.YTCodigoCaja.Visibility = 'Visible'
+        $ui.YTAviso.Visibility = 'Visible'
+    } elseif ($e.error_conexion -and -not $e.youtube_conectado) {
+        $ui.TxtYTAviso.Text = "No se ha podido conectar con YouTube: $($e.error_conexion)"
+        $ui.TxtYTAviso.Foreground = Brush '#F28B82'
+        $ui.YTCodigoCaja.Visibility = 'Collapsed'
+        $ui.YTAviso.Visibility = 'Visible'
+    } else {
+        $ui.YTAviso.Visibility = 'Collapsed'
+    }
+
+    if ($e.pausa_hasta) {
+        $ui.TxtYTTrabajo.Text = "En pausa hasta las $($e.pausa_hasta): $($e.motivo_pausa)"; $ui.ChipYTTrabajo.Background = Brush '#3A2E12'
+        $ui.ChipYTTrabajo.Visibility = 'Visible'
+    } elseif ($e.trabajando) {
+        $ui.TxtYTTrabajo.Text = "Trabajando en $($e.trabajando)"; $ui.ChipYTTrabajo.Background = Brush '#1E2A24'
+        $ui.ChipYTTrabajo.Visibility = 'Visible'
+    } else { $ui.ChipYTTrabajo.Visibility = 'Collapsed' }
+    $ui.BtnYTActualizar.IsEnabled = -not $e.actualizando
+    $ui.BtnYTActualizar.Content = if ($e.actualizando) { 'Actualizando…' } else { 'Actualizar listado' }
+
+    $partes = @($e.cuenta.PSObject.Properties | ForEach-Object { "$($_.Value) $($_.Name)" })
+    $ui.TxtYTCola.Text = if ($partes.Count) { $partes -join ' · ' } else { 'Vacía.' }
+    $ui.YTCola.Children.Clear()
+    $cola = @($e.cola)
+    [array]::Reverse($cola)
+    foreach ($item in ($cola | Select-Object -First 150)) {
+        $b = New-Object System.Windows.Controls.Border
+        $b.BorderBrush = Brush '#2A2A2A'; $b.BorderThickness = '0,0,0,1'; $b.Padding = '0,6'
+        $g = New-Object System.Windows.Controls.DockPanel
+        $der = New-Object System.Windows.Controls.StackPanel
+        $der.Orientation = 'Horizontal'; $der.VerticalAlignment = 'Top'
+        [System.Windows.Controls.DockPanel]::SetDock($der, 'Right')
+        if ($item.estado -eq 'hecho' -and $item.nuevo) {
+            $l = New-Object System.Windows.Controls.Button
+            $l.Style = $win.FindResource('Plano'); $l.Padding = '6,2'; $l.Foreground = Brush '#81C995'; $l.FontSize = 12.5
+            $l.Content = 'hecho ↗'; $l.Tag = "https://www.youtube.com/watch?v=$($item.nuevo)"; $l.ToolTip = 'Abrir el vídeo nuevo'
+            $l.Add_Click({ Start-Process $this.Tag })
+            [void]$der.Children.Add($l)
+        } else {
+            $color = switch ($item.estado) { 'error' { '#F28B82' } 'pendiente' { '#8E8E8E' } default { '#F2C46D' } }
+            $t = New-TextoYT $item.estado $color 12.5; $t.Margin = '6,2'
+            [void]$der.Children.Add($t)
+        }
+        if ($item.estado -eq 'pendiente' -or $item.estado -eq 'error') {
+            $q = New-Object System.Windows.Controls.Button
+            $q.Style = $win.FindResource('Plano'); $q.Padding = '6,2'; $q.Foreground = Brush '#B4B4B4'; $q.FontSize = 12
+            $q.Content = 'Quitar'; $q.Tag = $item.id
+            $q.Add_Click({
+                Invoke-YT 'POST' '/api/cola/quitar' @{ ids = @($this.Tag) } {
+                    param($res, $err)
+                    if ($err) { Show-ErrorRedYT $err; return }
+                    Get-EstadoYT; Get-VideosYT
+                }
+            })
+            [void]$der.Children.Add($q)
+        }
+        $izq = New-Object System.Windows.Controls.StackPanel
+        [void]$izq.Children.Add((New-TextoYT $item.titulo '#ECECEC' 13))
+        if ($item.error) { [void]$izq.Children.Add((New-TextoYT $item.error '#F28B82' 12)) }
+        [void]$g.Children.Add($der); [void]$g.Children.Add($izq)
+        $b.Child = $g
+        [void]$ui.YTCola.Children.Add($b)
+    }
+}
+
+function Set-Modo([string]$modo) {
+    $yt = $modo -eq 'youtube'
+    $script:modo = if ($yt) { 'youtube' } else { 'valora' }
+    $ui.PanelYT.Visibility = if ($yt) { 'Visible' } else { 'Collapsed' }
+    # En modo YouTube, lo del lateral que es de Valora (conversaciones, carpetas, fichas, agy) no pinta nada.
+    foreach ($n in 'LateralArriba', 'LateralMedio', 'LateralAbajo') { $ui[$n].Visibility = if ($yt) { 'Collapsed' } else { 'Visible' } }
+    $ui.BtnModoYT.Background = Brush $(if ($yt) { '#3A3A3A' } else { '#00000000' })
+    $ui.BtnModoValora.Background = Brush $(if ($yt) { '#00000000' } else { '#3A3A3A' })
+    if ($yt) {
+        if (-not (Get-TokenYT)) {
+            Show-ServidorYT 'Entra con el usuario y la contraseña de la web de resubida.'
+            $ui.TxtYTResumen.Text = 'Sin conectar con la web.'
+        } else {
+            if (-not $script:ytVideos.Count) { Get-VideosYT }
+            Get-EstadoYT
+        }
+        $timerYT.Start()
+    } else {
+        $timerYT.Stop()
+    }
+    Save-Config
+}
+
+# Mientras se ve el panel: la cola cada 5 s y el listado cada minuto (si no hay nada elegido,
+# para no mover la lista mientras se selecciona).
+$timerYT = New-Object System.Windows.Threading.DispatcherTimer
+$timerYT.Interval = [TimeSpan]::FromSeconds(5)
+$timerYT.Add_Tick({
+    Get-EstadoYT
+    $script:ytTicks++
+    if ($script:ytTicks % 12 -eq 0 -and $script:ytSel.Count -eq 0) { Get-VideosYT }
+})
+
+$ui.BtnModoValora.Add_Click({ Set-Modo 'valora' })
+$ui.BtnModoYT.Add_Click({ Set-Modo 'youtube' })
+$ui.BtnYTServidor.Add_Click({
+    if ($ui.YTServidor.Visibility -eq 'Visible') { $ui.YTServidor.Visibility = 'Collapsed' } else { Show-ServidorYT }
+})
+$ui.BtnYTEntrar.Add_Click({ Enter-YT })
+$ui.YTClave.Add_KeyDown({ if ($_.Key -eq 'Return') { Enter-YT } })
+$ui.BtnYTActualizar.Add_Click({
+    Invoke-YT 'POST' '/api/actualizar' @{} { param($res, $err) if ($err) { Show-ErrorRedYT $err } else { Get-EstadoYT } }
+})
+$ui.BtnYTConectar.Add_Click({
+    $ui.BtnYTConectar.IsEnabled = $false
+    Invoke-YT 'POST' '/api/conectar' @{} {
+        param($res, $err)
+        $ui.BtnYTConectar.IsEnabled = $true
+        if ($err) { Show-ErrorRedYT $err } else { Get-EstadoYT }
+    }
+})
+$ui.BtnYTCopiar.Add_Click({ if ($ui.TxtYTCodigo.Text) { [System.Windows.Clipboard]::SetText($ui.TxtYTCodigo.Text); Set-Estado 'Código copiado.' '#81C995' } })
+$ui.BtnYTAbrirGoogle.Add_Click({ if ($ui.BtnYTAbrirGoogle.Tag) { Start-Process ([string]$ui.BtnYTAbrirGoogle.Tag) } })
+$ui.YTBuscar.Add_TextChanged({
+    $ui.YTBuscarPista.Visibility = if ($ui.YTBuscar.Text) { 'Collapsed' } else { 'Visible' }
+    Update-ListaYT
+})
+foreach ($c in 'YTPlaylist', 'YTTipo', 'YTEstado') { $ui[$c].Add_SelectionChanged({ Update-ListaYT }) }
+$ui.YTLista.Add_SelectionChanged({
+    if ($script:ytPintando) { return }
+    foreach ($f in $_.RemovedItems) { [void]$script:ytSel.Remove($f.Id) }
+    foreach ($f in $_.AddedItems) { if ($f.Seleccionable) { [void]$script:ytSel.Add($f.Id) } }
+    Update-SeleccionYT
+})
+$ui.YTLista.Add_MouseDoubleClick({
+    $f = $ui.YTLista.SelectedItem
+    if ($f -and $f.Url) { Start-Process $f.Url }
+})
+$ui.BtnYTTodos.Add_Click({
+    if (-not $script:ytFiltrados) { return }
+    foreach ($f in $script:ytFiltrados) { if ($f.Seleccionable) { [void]$script:ytSel.Add($f.Id) } }
+    $script:ytPintando = $true
+    try { $ui.YTLista.SelectAll() } finally { $script:ytPintando = $false }
+    Update-SeleccionYT
+})
+$ui.BtnYTNinguno.Add_Click({
+    $script:ytSel.Clear()
+    $script:ytPintando = $true
+    try { $ui.YTLista.UnselectAll() } finally { $script:ytPintando = $false }
+    Update-SeleccionYT
+})
+$ui.BtnYTResubir.Add_Click({ Send-ResubirYT })
+
 $VersionFile = Join-Path $ConfigDir 'version.json'
 $script:upd = $null
 $script:pendienteReinicio = $false
@@ -1976,6 +2603,7 @@ $timerAplicar.Add_Tick({
     if (-not $script:pendienteReinicio) { $timerAplicar.Stop(); return }
     if ($script:proc -or $script:loginProc -or $ui.Login.Visibility -eq 'Visible' -or
         $ui.PanelConfirmar.Visibility -eq 'Visible' -or $ui.PanelFC.Visibility -eq 'Visible' -or
+        $script:ytSel.Count -gt 0 -or $ui.YTAviso.Visibility -eq 'Visible' -or $ui.YTClave.Password -or
         ((Get-Date) - $script:ultimaEscritura).TotalSeconds -lt 15) { return }
     $timerAplicar.Stop()
     Restart-Valora
@@ -2096,6 +2724,7 @@ if (Test-Path $ReanudarFile) {
         }
     } catch {}
 }
+if ($cfg.modo -eq 'youtube') { Set-Modo 'youtube' }
 $ui.TxtVersion.Text = 'Versión ' + $(if ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
 if ($script:relevo) { $ui.TxtVersion.Text += ' · recién actualizada ✓'; $ui.TxtVersion.Foreground = Brush '#81C995' }
 $ui.TxtCuenta.Text = 'Comprobando…'; $ui.BtnLogout.Visibility = 'Collapsed'
