@@ -264,25 +264,27 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             </StackPanel>
           </Button>
 
-          <TextBlock Text="CARPETA DE TRABAJO" Style="{StaticResource Seccion}"/>
-          <Border Background="#202020" CornerRadius="8" Padding="10,8" Margin="2,0">
+          <!-- Carpetas: la de trabajo y las conectadas, en una sola tarjeta -->
+          <TextBlock Text="CARPETAS" Style="{StaticResource Seccion}"/>
+          <Border Background="#202020" CornerRadius="10" Padding="10,8,6,6" Margin="2,0">
             <StackPanel>
-              <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" Foreground="#CFCFCF" FontSize="13"/>
-              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <TextBlock Text="De trabajo" Foreground="#8E8E8E" FontSize="11.5"/>
+              <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" Foreground="#CFCFCF" FontSize="13" Margin="0,2,0,0"/>
+              <StackPanel Orientation="Horizontal" Margin="-8,4,0,0">
                 <Button x:Name="BtnWs" Style="{StaticResource Plano}" Padding="8,4" FontSize="12.5" Foreground="#B4B4B4" Content="Cambiar"/>
                 <Button x:Name="BtnAbrirWs" Style="{StaticResource Plano}" Padding="8,4" FontSize="12.5" Foreground="#B4B4B4" Content="Abrir en Explorador"/>
               </StackPanel>
+              <Border Height="1" Background="#2E2E2E" Margin="0,6,4,6"/>
+              <TextBlock Text="Conectadas" Foreground="#8E8E8E" FontSize="11.5" Margin="0,0,0,2"/>
+              <ItemsControl x:Name="ListaCarpetas" Margin="-10,0,0,0"/>
+              <Button x:Name="BtnCarpeta" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="8,5" Margin="-8,0,0,0" FontSize="12.5">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="11"/>
+                  <TextBlock Text="Conectar carpeta"/>
+                </StackPanel>
+              </Button>
             </StackPanel>
           </Border>
-
-          <TextBlock Text="CARPETAS CONECTADAS" Style="{StaticResource Seccion}"/>
-          <ItemsControl x:Name="ListaCarpetas"/>
-          <Button x:Name="BtnCarpeta" Style="{StaticResource Plano}" Foreground="#B4B4B4">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" VerticalAlignment="Center" Margin="0,0,10,0" FontSize="12"/>
-              <TextBlock Text="Conectar carpeta"/>
-            </StackPanel>
-          </Button>
           </StackPanel>
         </StackPanel>
 
