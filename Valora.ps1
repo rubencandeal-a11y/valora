@@ -503,7 +503,8 @@ $script:pensando = $true
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <Button x:Name="BtnYTPaso4" Style="{StaticResource Plano}" Background="#2A2A2A" Padding="12,6" FontSize="13"
-                      Tag="https://console.cloud.google.com/apis/credentials" Content="1. Coger Client ID y secret en Google Cloud ↗"/>
+                      Tag="https://console.cloud.google.com/apis/credentials" Content="1. Coger Client ID y secret en Google Cloud ↗"
+                      ToolTip="Con este panel abierto, copia el ID y el secreto con el botón de copiar de Google: Valora los rellena y los guarda sola"/>
               <Button x:Name="BtnYTPaso2" Style="{StaticResource Plano}" Foreground="#8E8E8E" Padding="8,6" FontSize="12" Margin="6,0,0,0"
                       Tag="https://console.cloud.google.com/apis/library/youtube.googleapis.com" Content="¿API sin activar?"
                       ToolTip="Activa YouTube Data API v3 en el proyecto (solo la primera vez)"/>
@@ -2373,7 +2374,7 @@ function Update-CredYT($e) {
         $ui.TxtYTCredEstado.Text = "Credenciales guardadas ($($e.client_id)). Falta el paso 2."
         $ui.TxtYTCredEstado.Foreground = Brush '#81C995'
     } else {
-        $ui.TxtYTCredEstado.Text = 'Faltan las credenciales de la API (paso 1).'
+        $ui.TxtYTCredEstado.Text = 'Faltan las credenciales (paso 1). Cópialas en Google con su botón de copiar: se rellenan solas.'
         $ui.TxtYTCredEstado.Foreground = Brush '#F2C46D'
     }
 }
@@ -2563,6 +2564,33 @@ $ui.BtnYTConectar.Add_Click({
     if (-not ($script:ytEstado -and $script:ytEstado.credenciales)) { Start-Process ([string]$ui.BtnYTPaso4.Tag) }
 })
 $ui.BtnYTCredCerrar.Add_Click({ $ui.YTCred.Visibility = 'Collapsed' })
+
+# Con el panel abierto se mira el portapapeles: lo que se copie en Google Cloud con su botón de
+# copiar (el ID, el secreto o el JSON entero) se rellena solo, y con los dos datos se guarda.
+$script:ytUltimoPortapapeles = ''
+$timerPortapapeles = New-Object System.Windows.Threading.DispatcherTimer
+$timerPortapapeles.Interval = [TimeSpan]::FromMilliseconds(700)
+$timerPortapapeles.Add_Tick({
+    if ($ui.YTCred.Visibility -ne 'Visible' -or $script:modo -ne 'youtube') { return }
+    $t = ''
+    try { if ([System.Windows.Clipboard]::ContainsText()) { $t = [System.Windows.Clipboard]::GetText().Trim() } } catch { return }
+    if (-not $t -or $t -eq $script:ytUltimoPortapapeles) { return }
+    $script:ytUltimoPortapapeles = $t
+    $cambio = $false
+    if ($t -match '^\{' -and $t -match 'client_id') { $ui.YTClientId.Text = $t; $cambio = $true }
+    elseif ($t -match '^[\w.-]+\.apps\.googleusercontent\.com$') { $ui.YTClientId.Text = $t; $cambio = $true }
+    elseif ($t -match '^GOCSPX-[\w-]+$') { $ui.YTClientSecret.Password = $t; $cambio = $true }
+    if (-not $cambio) { return }
+    $listo = $ui.YTClientId.Text.StartsWith('{') -or ($ui.YTClientId.Text -and $ui.YTClientSecret.Password)
+    if ($listo) { Save-CredYT }
+    else {
+        $falta = if ($ui.YTClientId.Text) { 'el secreto' } else { 'el ID de cliente' }
+        $ui.TxtYTCredEstado.Text = "Copiado. Ahora copia $falta en Google Cloud."
+        $ui.TxtYTCredEstado.Foreground = Brush '#81C995'
+        $script:ytMensajeCredHasta = (Get-Date).AddSeconds(60)
+    }
+})
+$timerPortapapeles.Start()
 foreach ($n in 'BtnYTPaso2', 'BtnYTPaso4') { $ui[$n].Add_Click({ Start-Process ([string]$this.Tag) }) }
 $ui.BtnYTGuardarCred.Add_Click({ Save-CredYT })
 $ui.BtnYTLoginGoogle.Add_Click({
