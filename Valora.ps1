@@ -656,7 +656,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                      TextWrapping="Wrap" AcceptsReturn="True" MinHeight="140" MaxHeight="300" VerticalScrollBarVisibility="Auto" Padding="0,6"/>
           </Border>
           <Grid Margin="0,14,0,0">
-            <Button x:Name="BtnEstiloBorrar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="10,8" HorizontalAlignment="Left" Content="Dejarlo como estaba"/>
+            <Button x:Name="BtnEstiloBorrar" Style="{StaticResource Plano}" Foreground="#B4B4B4" Padding="10,8" HorizontalAlignment="Left" Content="Borrar indicaciones" ToolTip="Valora vuelve a responder como siempre"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
               <Button x:Name="BtnEstiloCancelar" Style="{StaticResource Plano}" Foreground="#ECECEC" Padding="14,8" Content="Cancelar"/>
               <Button x:Name="BtnEstiloGuardar" Style="{StaticResource Plano}" Background="#ECECEC" Foreground="#171717" Padding="16,8"
