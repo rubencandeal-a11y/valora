@@ -50,7 +50,7 @@ function Load-Config {
             if ($null -ne $j.auto) { $cfg.auto = [bool]$j.auto }
             if ($j.carpetas) { $cfg.carpetas = @($j.carpetas) }
             if ($j.fcEntorno) { $cfg.fcEntorno = $j.fcEntorno }
-            foreach ($k in 'ytUrl', 'ytUsuario', 'ytToken', 'modo', 'estilo') { if ($j.$k) { $cfg[$k] = $j.$k } }
+            foreach ($k in 'ytUrl', 'ytUsuario', 'ytToken', 'modo', 'estilo', 'permisosAgy') { if ($j.$k) { $cfg[$k] = $j.$k } }
             if ($j.fcClaves) { foreach ($pr in $j.fcClaves.PSObject.Properties) { $cfg.fcClaves[$pr.Name] = $pr.Value } }
         } catch {}
     }
@@ -59,9 +59,9 @@ function Load-Config {
 
 function Save-Config {
     @{ workspace = $script:workspace; auto = [bool]$ui.ChkAuto.IsChecked; carpetas = @($script:carpetas); fcEntorno = $script:fcEntorno; fcClaves = $script:fcClaves
-       ytUrl = $script:ytUrl; ytUsuario = $script:ytUsuario; ytToken = $script:ytToken; modo = $script:modo; estilo = $script:estilo } |
+       ytUrl = $script:ytUrl; ytUsuario = $script:ytUsuario; ytToken = $script:ytToken; modo = $script:modo; estilo = $script:estilo; permisosAgy = $script:permisosAgy } |
         ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
-    Set-PermisosAgy
+    [void](Set-PermisosAgy)
 }
 
 # agy pide permiso para cada comando y cada carpeta salvo que su settings.json diga lo
@@ -86,10 +86,11 @@ function Set-PermisosAgy {
         }
         $s | Add-Member -NotePropertyName trustedWorkspaces -NotePropertyValue $confiadas -Force
         $json = $s | ConvertTo-Json -Depth 10
-        if ((Test-Path $ruta) -and (Get-Content $ruta -Raw -Encoding UTF8) -eq $json) { return }
+        if ((Test-Path $ruta) -and (Get-Content $ruta -Raw -Encoding UTF8) -eq $json) { return $true }
         New-Item -ItemType Directory -Force (Split-Path $ruta) | Out-Null
         [IO.File]::WriteAllText($ruta, $json, (New-Object Text.UTF8Encoding $false))
-    } catch { }
+        return $true
+    } catch { return $false }
 }
 
 $script:Agy = Find-Agy
@@ -107,6 +108,7 @@ $script:ytUsuario = $cfg.ytUsuario
 $script:ytToken = $cfg.ytToken        # token de esa web, cifrado con DPAPI como las claves de Foticos Collection
 $script:modo = 'valora'               # 'valora' o 'youtube'; se aplica al arrancar
 $script:estilo = [string]$cfg.estilo  # cómo quiere el usuario que responda; va delante de cada pregunta
+$script:permisosAgy = [bool]$cfg.permisosAgy   # el usuario ha aceptado que agy trabaje con todos los permisos
 
 $script:proc = $null
 $script:outTask = $null
@@ -2005,6 +2007,20 @@ function Send-PreguntaSesion([string]$mensaje) {
     $entrada.Flush()
 }
 
+# Cómo consultar Foticos Collection. Va delante de la primera pregunta de cada conversación
+# (agy la recuerda para las siguientes). Con los campos exactos, agy lo resuelve con uno o dos
+# comandos; sin ellos tanteaba con una docena y tardaba un minuto.
+$GuiaFC = @'
+Foticos Collection (la colección de fotografía de la empresa) tiene una API pública de solo lectura, rápida (menos de 0,5 s) y sin clave. Cuando pregunten por la colección, sus fichas, marcas, tipos o cifras, úsala con Invoke-RestMethod; no busques en internet ni en archivos. Resuélvelo con un solo comando que haga todas las llamadas y saque solo los campos necesarios; no tantees.
+- https://foticoscollection.com/api/v1/stats -> .stats: total_items, total_brands, total_types, total_countries.
+- https://foticoscollection.com/api/v1/items?q=TEXTO&brand_id=ID&type_id=ID&year_min=AÑO&year_max=AÑO&per_page=N&page=P -> .data[]: id, nombre, tipo, foto, descripcion; .meta.total = total encontrado. q busca en descripción y modelo; per_page hasta 200.
+- https://foticoscollection.com/api/v1/items/ID -> id, nombre, marca, tipo, foto.
+- https://foticoscollection.com/api/v1/brands y https://foticoscollection.com/api/v1/types -> .data[]: id, name, items_count.
+foto es una ruta relativa: antepón https://foticoscollection.com.
+run_command ya ejecuta PowerShell: escribe el comando tal cual, nunca dentro de powershell -Command. Ejemplo que funciona:
+$b='https://foticoscollection.com/api/v1'; $s=(Invoke-RestMethod "$b/stats").stats; $r=Invoke-RestMethod "$b/items?q=leica&per_page=3"; "Fichas: $($s.total_items)"; $r.data | Select-Object id, nombre, tipo | Format-Table -AutoSize | Out-String -Width 200
+'@
+
 function Read-Evento([string]$linea) {
     $ev = $null
     try { $ev = $linea | ConvertFrom-Json } catch {}
@@ -2143,6 +2159,7 @@ function Enviar([string]$instrucciones = '') {
     if ($script:estilo.Trim()) {
         $mensaje = "Cómo quiere el usuario que le respondas (síguelo siempre):`n" + $script:estilo.Trim() + "`n`n" + $mensaje
     }
+    if (-not $script:conv -or -not $script:conv.agyId) { $mensaje = $GuiaFC + "`n" + $mensaje }
     if ($adjuntos.Count -gt 0) {
         $mensaje += "`n`nArchivos adjuntos (ábrelos y míralos):`n" + (($adjuntos | ForEach-Object { "- $_" }) -join "`n")
     }
@@ -3569,7 +3586,21 @@ if ($script:esInstalada) {
     }
 }
 $ui.TxtWs.Text = Split-Path $script:workspace -Leaf; $ui.BtnAbrirWs.ToolTip = "Carpeta de trabajo (abrir en Explorador)`n" + $script:workspace
-Set-PermisosAgy
+if (-not $script:permisosAgy) {
+    $r = [System.Windows.MessageBox]::Show(
+        "Para responder rápido, Valora deja que agy trabaje con todos los permisos: lee y crea archivos, " +
+        "ejecuta comandos y consulta internet sin pedir confirmación cada vez.`n`n" +
+        "¿Aceptas darle todos los permisos?`n`nSin ellos Valora no puede funcionar.",
+        'Valora: permisos de agy', 'YesNo', 'Warning')
+    if ($r -ne 'Yes') { $win.Close(); exit }
+    $script:permisosAgy = $true
+    Save-Config
+}
+if (-not (Set-PermisosAgy)) {
+    [System.Windows.MessageBox]::Show(
+        "No he podido dar los permisos a agy (no se puede escribir en $env:USERPROFILE\.gemini\antigravity-cli\settings.json). " +
+        'agy funcionará, pero puede ir más lento.', 'Valora', 'OK', 'Warning') | Out-Null
+}
 Update-Adjuntos; Update-Carpetas; Update-Inicio; Update-ListaConv
 Update-Entorno; Update-BarraFicha
 $verLocal = (Get-VersionLocal).sha
