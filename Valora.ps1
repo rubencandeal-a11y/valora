@@ -332,7 +332,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             </DockPanel>
           </Button>
 
-          <!-- Carpeta de trabajo; los botones de cambiarla y conectar otra salen al pasar el ratón -->
+          <!-- Carpeta de trabajo, con los botones de cambiarla y de conectar otra siempre a la vista -->
           <Grid x:Name="FilaWs" Margin="0,1,0,0" Background="Transparent">
             <Button x:Name="BtnAbrirWs" Style="{StaticResource Plano}" HorizontalContentAlignment="Stretch">
               <DockPanel>
@@ -340,7 +340,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                 <TextBlock x:Name="TxtWs" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,60,0"/>
               </DockPanel>
             </Button>
-            <StackPanel x:Name="IconosWs" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" Visibility="Hidden">
+            <StackPanel x:Name="IconosWs" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0">
               <Button x:Name="BtnWs" Style="{StaticResource Plano}" Padding="6" ToolTip="Cambiar carpeta de trabajo">
                 <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="12" Foreground="#969CA6"/>
               </Button>
@@ -2190,8 +2190,6 @@ $ui.BtnWs.Add_Click({
 })
 
 $ui.BtnAbrirWs.Add_Click({ Start-Process explorer.exe $script:workspace })
-$ui.FilaWs.Add_MouseEnter({ $ui.IconosWs.Visibility = 'Visible' })
-$ui.FilaWs.Add_MouseLeave({ $ui.IconosWs.Visibility = 'Hidden' })
 $ui.ChkAuto.Add_Click({ Save-Config })
 
 $ui.BtnTerminal.Add_Click({
