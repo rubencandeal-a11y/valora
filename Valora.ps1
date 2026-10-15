@@ -2982,9 +2982,17 @@ function Update-EstadoYT($e) {
 
     if ($e.codigo) {
         $ui.TxtYTAviso.Text = "1. Pulsa «Abrir la página de Google» (o entra en $($e.url_verificacion) desde el móvil).`n" +
-            "2. Escribe este código.`n3. Entra con la cuenta de Google dueña del canal y acepta. Esto se actualiza solo."
+            "2. Pega el código con Ctrl+V (ya está copiado).`n3. Entra con la cuenta de Google dueña del canal y acepta. Esto se actualiza solo."
         $ui.TxtYTAviso.Foreground = Brush '#ECE8E1'
         if ($ui.TxtYTCodigo.Text -ne $e.codigo) { $ui.TxtYTCodigo.Text = $e.codigo }
+        # Si la conexión la ha pedido este PC, el código va al portapapeles y se abre la página
+        # de Google: solo hay que pegarlo con Ctrl+V. Si la pidió otro PC, aquí no se abre nada.
+        if ($script:ytPidioCodigo) {
+            $script:ytPidioCodigo = $false
+            try { [System.Windows.Clipboard]::SetText($e.codigo) } catch {}
+            if ($e.url_verificacion) { Start-Process ([string]$e.url_verificacion) }
+            Set-Estado 'Código copiado. En la página de Google, pégalo con Ctrl+V.' '#81C995'
+        }
         $ui.BtnYTAbrirGoogle.Tag = $e.url_verificacion
         $ui.YTCodigoCaja.Visibility = 'Visible'
         $ui.YTAviso.Visibility = 'Visible'
@@ -3111,8 +3119,28 @@ $ui.YTClave.Add_KeyDown({ if ($_.Key -eq 'Return') { Enter-YT } })
 $ui.BtnYTActualizar.Add_Click({
     Invoke-YT 'POST' '/api/actualizar' @{} { param($res, $err) if ($err) { Show-ErrorRedYT $err } else { Get-EstadoYT } }
 })
+$script:ytPidioCodigo = $false
+function Start-ConexionYT($boton) {
+    $boton.IsEnabled = $false
+    $script:ytPidioCodigo = $true
+    Invoke-YT 'POST' '/api/conectar' @{} {
+        param($res, $err, $boton)
+        $boton.IsEnabled = $true
+        if ($err) { $script:ytPidioCodigo = $false; Show-ErrorRedYT $err; return }
+        if ($res.ok) { $ui.YTCred.Visibility = 'Collapsed' }
+        else {
+            $script:ytPidioCodigo = $false
+            $ui.TxtYTCredEstado.Text = "Google no deja conectar: $($res.error)"; $ui.TxtYTCredEstado.Foreground = Brush '#F28B82'
+            $ui.YTCred.Visibility = 'Visible'
+        }
+        Get-EstadoYT
+    } $boton
+}
+
 $ui.BtnYTConectar.Add_Click({
     if ($ui.YTCred.Visibility -eq 'Visible') { $ui.YTCred.Visibility = 'Collapsed'; return }
+    # Con las credenciales ya puestas en la web, se pide el código directamente.
+    if ($script:ytEstado -and $script:ytEstado.credenciales) { Start-ConexionYT $ui.BtnYTConectar; return }
     Update-CredYT $script:ytEstado
     $ui.YTCred.Visibility = 'Visible'
     # Sin credenciales, se abre directamente la página de Google Cloud donde están.
@@ -3148,19 +3176,13 @@ $timerPortapapeles.Add_Tick({
 $timerPortapapeles.Start()
 foreach ($n in 'BtnYTPaso2', 'BtnYTPaso4') { $ui[$n].Add_Click({ Start-Process ([string]$this.Tag) }) }
 $ui.BtnYTGuardarCred.Add_Click({ Save-CredYT })
-$ui.BtnYTLoginGoogle.Add_Click({
-    $ui.BtnYTLoginGoogle.IsEnabled = $false
-    Invoke-YT 'POST' '/api/conectar' @{} {
-        param($res, $err)
-        $ui.BtnYTLoginGoogle.IsEnabled = $true
-        if ($err) { Show-ErrorRedYT $err; return }
-        if ($res.ok) { $ui.YTCred.Visibility = 'Collapsed' }
-        else { $ui.TxtYTCredEstado.Text = "Google no deja conectar: $($res.error)"; $ui.TxtYTCredEstado.Foreground = Brush '#F28B82' }
-        Get-EstadoYT
-    }
-})
+$ui.BtnYTLoginGoogle.Add_Click({ Start-ConexionYT $ui.BtnYTLoginGoogle })
 $ui.BtnYTCopiar.Add_Click({ if ($ui.TxtYTCodigo.Text) { [System.Windows.Clipboard]::SetText($ui.TxtYTCodigo.Text); Set-Estado 'Código copiado.' '#81C995' } })
-$ui.BtnYTAbrirGoogle.Add_Click({ if ($ui.BtnYTAbrirGoogle.Tag) { Start-Process ([string]$ui.BtnYTAbrirGoogle.Tag) } })
+$ui.BtnYTAbrirGoogle.Add_Click({
+    if ($ui.TxtYTCodigo.Text) { try { [System.Windows.Clipboard]::SetText($ui.TxtYTCodigo.Text) } catch {} }
+    if ($ui.BtnYTAbrirGoogle.Tag) { Start-Process ([string]$ui.BtnYTAbrirGoogle.Tag) }
+    Set-Estado 'Código copiado. En la página de Google, pégalo con Ctrl+V.' '#81C995'
+})
 $ui.YTBuscar.Add_TextChanged({
     $ui.YTBuscarPista.Visibility = if ($ui.YTBuscar.Text) { 'Collapsed' } else { 'Visible' }
     Update-ListaYT
