@@ -119,6 +119,10 @@ New-Item -ItemType Directory -Force $ConvDir | Out-Null
 $script:respuesta = $null
 $script:pensando = $true
 $script:convTrabajo = $null       # conversación a la que pertenece la respuesta en curso
+$script:sesion = $null            # agy abierto y esperando preguntas (ver Start-SesionAgy)
+$script:finTurno = $false         # agy ha mandado el «result» de la pregunta en curso
+$script:pasos = New-Object System.Collections.ArrayList   # lo que agy va haciendo en la pregunta en curso
+$script:inicioTurno = Get-Date
 $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerla al abrir esa conversación
 
 [xml]$xaml = @'
@@ -1408,6 +1412,7 @@ function New-ConvVacia {
     Update-Inicio
     Update-ListaConv
     if (Get-Command Update-BarraFicha -ErrorAction SilentlyContinue) { Update-BarraFicha }
+    if (Get-Command Start-SesionAgy -ErrorAction SilentlyContinue) { Start-SesionAgy }
 }
 
 function Open-Conv([string]$id) {
@@ -1431,6 +1436,7 @@ function Open-Conv([string]$id) {
     Update-BarraFicha
     $ui.Scroll.ScrollToEnd()
     Set-Estado 'Conversación abierta. Puedes seguir donde la dejaste.'
+    Start-SesionAgy
     $ui.Prompt.Focus() | Out-Null
 }
 
@@ -1614,6 +1620,7 @@ function Close-Sesion {
         'Cerrar sesión', 'YesNo', 'Question')
     if ($r -ne 'Yes') { return }
     if ($script:proc -and -not $script:proc.HasExited) { try { $script:proc.Kill() } catch {} }
+    Stop-SesionAgy
     & cmdkey.exe /delete:gemini:antigravity | Out-Null
     New-ConvVacia
     Update-Cuenta $false
@@ -1898,7 +1905,106 @@ $NombresPaso = @{
     'grep_search' = 'Buscando en los archivos'; 'write_to_file' = 'Creando un archivo'; 'replace_file_content' = 'Editando un archivo'
     'multi_replace_file_content' = 'Editando un archivo'; 'run_command' = 'Ejecutando un comando'; 'search_web' = 'Buscando en internet'
     'read_url_content' = 'Leyendo una página web'; 'generate_image' = 'Generando una imagen'
+    'view_file_outline' = 'Leyendo un archivo'; 'view_code_item' = 'Leyendo un archivo'; 'command_status' = 'Esperando un comando'
 }
+# Qué está haciendo agy, en palabras de quien usa Valora: «Leyendo VALORA.md».
+function Get-TextoPaso($su) {
+    $herramienta = [string]$su.tool_name
+    $nombre = $NombresPaso[$herramienta]
+    if (-not $nombre) { $nombre = 'Trabajando' }
+    $par = $null
+    if ($su.tool_info -and $su.tool_info -isnot [string]) { $par = $su.tool_info.parameters }
+    $detalle = ''
+    if ($par) {
+        foreach ($k in 'CommandLine', 'AbsolutePath', 'TargetFile', 'DirectoryPath', 'SearchPath', 'Query', 'Pattern', 'Url') {
+            if ($par.$k) { $detalle = [string]$par.$k; break }
+        }
+        if ($detalle -and $k -in 'AbsolutePath', 'TargetFile', 'DirectoryPath', 'SearchPath') { $detalle = Split-Path $detalle -Leaf }
+    }
+    $detalle = ($detalle -replace '\s+', ' ').Trim()
+    if ($detalle.Length -gt 70) { $detalle = $detalle.Substring(0, 70) + '…' }
+    if ($detalle) { return "${nombre}: $detalle" }
+    return $nombre
+}
+
+# Mientras no llega texto, la burbuja enseña cuánto lleva y los pasos que ha dado agy.
+function Show-Pasos {
+    if (-not $script:respuesta -or -not $script:pensando -or -not $script:proc) { return }
+    $s = [int]((Get-Date) - $script:inicioTurno).TotalSeconds
+    $lineas = @("Pensando… $s s")
+    $n = $script:pasos.Count
+    for ($i = [Math]::Max(0, $n - 6); $i -lt $n; $i++) {
+        $marca = if ($i -eq $n - 1) { '›' } else { '✓' }
+        $lineas += "$marca $($script:pasos[$i])"
+    }
+    $texto = $lineas -join "`n"
+    $caja = $script:respuesta.Caja
+    if ($caja.Content -is [System.Windows.Controls.TextBox]) {
+        if ($caja.Content.Text -ne $texto) { $caja.Content.Text = $texto }
+    } else {
+        $caja.Content = New-TextoLectura $texto '#8C929C'
+    }
+}
+
+# agy tarda unos segundos en arrancar. Para no pagarlos en cada pregunta, se deja abierto
+# con --input-format stream-json: cada pregunta se le manda por la entrada como una línea JSON.
+# Se abre al elegir o empezar una conversación, así que al preguntar ya está listo. Si cambian
+# la conversación o las carpetas, se cierra y se abre otro.
+function Get-ClaveSesion {
+    $id = if ($script:conv -and $script:conv.agyId) { [string]$script:conv.agyId } else { '' }
+    return $id + '|' + $script:workspace + '|' + (@($script:carpetas) -join '|')
+}
+
+function Stop-SesionAgy {
+    $s = $script:sesion
+    $script:sesion = $null
+    if ($s -and $s.proc -and -not $s.proc.HasExited) {
+        try { $s.proc.StandardInput.Close() } catch {}
+        try { $s.proc.Kill() } catch {}
+    }
+}
+
+function Start-SesionAgy {
+    # Con una respuesta en curso no se toca nada: la sesión es de esa pregunta.
+    if ($script:proc) { return }
+    if (-not $script:Agy) { $script:Agy = Find-Agy }
+    if (-not $script:Agy) { return }
+    $clave = Get-ClaveSesion
+    if ($script:sesion -and -not $script:sesion.proc.HasExited -and $script:sesion.clave -eq $clave) { return }
+    Stop-SesionAgy
+    $ws = $script:workspace
+    if (-not (Test-Path $ws)) { New-Item -ItemType Directory -Force $ws | Out-Null }
+    $argumentos = @('--input-format', 'stream-json', '--output-format', 'stream-json', '--dangerously-skip-permissions', '-p=""')
+    if ($script:conv -and $script:conv.agyId) { $argumentos += @('--conversation', $script:conv.agyId) }
+    foreach ($c in @($script:carpetas)) { $argumentos += @('--add-dir', (Quote-Arg $c)) }
+    # Sin esto, Windows pone una marca BOM al principio de la entrada y agy no la entiende.
+    try { [Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false } catch {}
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $script:Agy
+    $psi.Arguments = $argumentos -join ' '
+    $psi.WorkingDirectory = $ws
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+    $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+    try { $proc = [System.Diagnostics.Process]::Start($psi) } catch { return }
+    $agyId = if ($script:conv -and $script:conv.agyId) { [string]$script:conv.agyId } else { '' }
+    $script:sesion = [pscustomobject]@{ proc = $proc; clave = $clave; agyId = $agyId }
+    $script:outTask = $proc.StandardOutput.ReadLineAsync()
+    $script:errTask = $proc.StandardError.ReadLineAsync()
+}
+
+function Send-PreguntaSesion([string]$mensaje) {
+    $linea = (@{ event = 'user'; message = @{ role = 'user'; content = $mensaje } } | ConvertTo-Json -Compress -Depth 5) + "`n"
+    $bytes = (New-Object System.Text.UTF8Encoding $false).GetBytes($linea)
+    $entrada = $script:sesion.proc.StandardInput.BaseStream
+    $entrada.Write($bytes, 0, $bytes.Length)
+    $entrada.Flush()
+}
+
 function Read-Evento([string]$linea) {
     $ev = $null
     try { $ev = $linea | ConvertFrom-Json } catch {}
@@ -1909,6 +2015,11 @@ function Read-Evento([string]$linea) {
     switch ($ev.event) {
         'init' {
             $c = $script:convTrabajo
+            if ($script:sesion -and $ev.conversation_id) {
+                $script:sesion.agyId = [string]$ev.conversation_id
+                # La conversación nueva pasa a tener id: la sesión sigue valiendo para ella.
+                if ($c) { $script:sesion.clave = [string]$ev.conversation_id + '|' + $script:workspace + '|' + (@($script:carpetas) -join '|') }
+            }
             if ($c -and -not $c.agyId -and $ev.conversation_id) {
                 $c | Add-Member -NotePropertyName agyId -NotePropertyValue $ev.conversation_id -Force
                 Save-ConvObj $c
@@ -1918,13 +2029,14 @@ function Read-Evento([string]$linea) {
             $su = $ev.step_update
             if ($su.step_type -eq 'agent_response') {
                 if ($su.text_delta) { Write-Respuesta $su.text_delta }
-            } elseif ($su.state -eq 'ACTIVE' -and $su.step_type -ne 'user_input') {
-                $nombre = $NombresPaso[[string]$su.step_type]
-                if (-not $nombre) { $nombre = 'Trabajando' }
-                Set-Estado "$nombre…" '#E8A33D'
+            } elseif ($su.step_type -eq 'tool' -and $su.state -eq 'ACTIVE') {
+                $texto = Get-TextoPaso $su
+                [void]$script:pasos.Add($texto)
+                Set-Estado "$texto…" '#E8A33D'
+                Show-Pasos
             }
         }
-        'result' { $script:resultado = $ev.result }
+        'result' { $script:resultado = $ev.result; $script:finTurno = $true }
     }
 }
 
@@ -1949,16 +2061,24 @@ $timer.Add_Tick({
         if (-not $script:avisoLogin) { Write-Respuesta ($linea + "`n") '#F28B82' }
         $script:errTask = $script:proc.StandardError.ReadLineAsync()
     }
-    if (-not $script:outTask -and -not $script:errTask -and $script:proc.HasExited) {
-        $codigo = $script:proc.ExitCode
+    if ($script:pensando) { Show-Pasos }
+    $cerrado = -not $script:outTask -and -not $script:errTask -and $script:proc.HasExited
+    if ($script:finTurno -or $cerrado) {
+        $codigo = if ($script:proc.HasExited) { $script:proc.ExitCode } else { 0 }
+        if ($script:proc.HasExited) { Stop-SesionAgy }
         $script:proc = $null
+        $script:finTurno = $false
         $timer.Stop()
         Set-Ocupado $false
+        $errorAgy = if ($script:resultado -and $script:resultado.status -and $script:resultado.status -ne 'SUCCESS') { [string]$script:resultado.error } else { '' }
         if ($script:avisoLogin) {
             Write-Respuesta 'Falta conectar tu cuenta de Google. Inicia sesión y vuelve a enviar la pregunta.' '#F28B82'
             Show-Login
+        } elseif ($errorAgy) {
+            Write-Respuesta ("`n" + $errorAgy) '#F28B82'
+            Set-Estado 'agy terminó con error.' '#F28B82'
         } elseif ($codigo -eq 0) {
-            Set-Estado 'Listo.'
+            Set-Estado ('Listo en ' + [int]((Get-Date) - $script:inicioTurno).TotalSeconds + ' s.')
         } else {
             Set-Estado "agy terminó con error (código $codigo)." '#F28B82'
         }
@@ -2048,10 +2168,13 @@ function Enviar([string]$instrucciones = '') {
     Save-Conv
     Update-ListaConv
 
-    $argumentos = @('-p', (Quote-Arg $mensaje), '--output-format', 'stream-json')
-    if ($script:conv.agyId) { $argumentos += @('--conversation', $script:conv.agyId) }
-    $argumentos += '--dangerously-skip-permissions'
-    foreach ($c in $carpetas) { $argumentos += @('--add-dir', (Quote-Arg $c)) }
+    # La conversación nueva usa la sesión que ya estaba abierta esperando (y su id de agy).
+    if (-not $script:conv.agyId -and $script:sesion -and $script:sesion.agyId -and -not $script:sesion.proc.HasExited -and
+        $script:sesion.clave -eq ('|' + $script:workspace + '|' + (@($script:carpetas) -join '|'))) {
+        $script:conv | Add-Member -NotePropertyName agyId -NotePropertyValue $script:sesion.agyId -Force
+        $script:sesion.clave = Get-ClaveSesion
+        Save-Conv
+    }
 
     Add-MensajeUsuario $texto $adjuntos
     Add-MensajeAgy
@@ -2059,29 +2182,20 @@ function Enviar([string]$instrucciones = '') {
     $script:filaTrabajo = $ui.Chat.Children[$ui.Chat.Children.Count - 1]
     $ui.Scroll.ScrollToEnd()
 
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = $script:Agy
-    $psi.Arguments = $argumentos -join ' '
-    $psi.WorkingDirectory = $ws
-    $psi.UseShellExecute = $false
-    $psi.CreateNoWindow = $true
-    $psi.RedirectStandardInput = $true
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
-    $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
-
-    try {
-        $script:proc = [System.Diagnostics.Process]::Start($psi)
-    } catch {
-        Write-Respuesta ("No se pudo arrancar agy: " + $_.Exception.Message) '#F28B82'
+    Start-SesionAgy
+    if (-not $script:sesion) {
+        Write-Respuesta 'No se pudo arrancar agy.' '#F28B82'
         return
     }
-    $script:proc.StandardInput.Close()
-    $script:outTask = $script:proc.StandardOutput.ReadLineAsync()
-    $script:errTask = $script:proc.StandardError.ReadLineAsync()
     $script:avisoLogin = $false
     $script:resultado = $null
+    $script:finTurno = $false
+    $script:pasos.Clear()
+    $script:inicioTurno = Get-Date
+    $script:proc = $script:sesion.proc
+    try { Send-PreguntaSesion $mensaje } catch {
+        # agy se ha cerrado mientras esperaba: el timer lo verá cerrado y terminará el turno.
+    }
 
     $ui.Prompt.Clear()
     $script:archivos.Clear(); Update-Adjuntos
@@ -2093,6 +2207,7 @@ function Enviar([string]$instrucciones = '') {
 function Parar {
     if ($script:proc -and -not $script:proc.HasExited) {
         try { $script:proc.Kill() } catch {}
+        $script:sesion = $null
         Set-Estado 'Parado.'
     }
 }
@@ -3438,6 +3553,7 @@ $win.Add_PreviewDrop({
 $win.Add_Closing({
     Save-Config
     if ($script:proc -and -not $script:proc.HasExited) { try { $script:proc.Kill() } catch {} }
+    Stop-SesionAgy
     if ($script:loginProc) { try { $script:loginProc.Matar(); $script:loginProc.Cerrar() } catch {} }
 })
 
