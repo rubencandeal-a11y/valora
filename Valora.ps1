@@ -61,6 +61,35 @@ function Save-Config {
     @{ workspace = $script:workspace; auto = [bool]$ui.ChkAuto.IsChecked; carpetas = @($script:carpetas); fcEntorno = $script:fcEntorno; fcClaves = $script:fcClaves
        ytUrl = $script:ytUrl; ytUsuario = $script:ytUsuario; ytToken = $script:ytToken; modo = $script:modo; estilo = $script:estilo } |
         ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
+    Set-PermisosAgy
+}
+
+# agy pide permiso para cada comando y cada carpeta salvo que su settings.json diga lo
+# contrario. Valora le obliga siempre a trabajar sin preguntar (dangerously skip
+# permissions): aprueba todos los comandos y confía en la carpeta de trabajo y en las
+# conectadas. Se respeta el resto de la configuración (modelo, etc.).
+function Set-PermisosAgy {
+    try {
+        $ruta = Join-Path $env:USERPROFILE '.gemini\antigravity-cli\settings.json'
+        $s = $null
+        if (Test-Path $ruta) { $s = Get-Content $ruta -Raw -Encoding UTF8 | ConvertFrom-Json }
+        if (-not $s) { $s = [pscustomobject]@{} }
+        $s | Add-Member -NotePropertyName dangerously_skip_permissions -NotePropertyValue $true -Force
+        $permisos = if ($s.permissions) { $s.permissions } else { [pscustomobject]@{} }
+        $permitidos = @($permisos.allow | Where-Object { $_ })
+        if ($permitidos -notcontains 'command(*)') { $permitidos += 'command(*)' }
+        $permisos | Add-Member -NotePropertyName allow -NotePropertyValue $permitidos -Force
+        $s | Add-Member -NotePropertyName permissions -NotePropertyValue $permisos -Force
+        $confiadas = @($s.trustedWorkspaces | Where-Object { $_ })
+        foreach ($c in @($script:workspace) + @($script:carpetas)) {
+            if ($c -and -not ($confiadas | Where-Object { $_ -ieq $c })) { $confiadas += $c }
+        }
+        $s | Add-Member -NotePropertyName trustedWorkspaces -NotePropertyValue $confiadas -Force
+        $json = $s | ConvertTo-Json -Depth 10
+        if ((Test-Path $ruta) -and (Get-Content $ruta -Raw -Encoding UTF8) -eq $json) { return }
+        New-Item -ItemType Directory -Force (Split-Path $ruta) | Out-Null
+        [IO.File]::WriteAllText($ruta, $json, (New-Object Text.UTF8Encoding $false))
+    } catch { }
 }
 
 $script:Agy = Find-Agy
@@ -361,8 +390,8 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE756;" FontSize="13" Foreground="#ACB1B9"/>
             </Button>
             <CheckBox x:Name="ChkAuto" Foreground="#ACB1B9" FontSize="13" VerticalAlignment="Center"
-                      Content="Modo automático"
-                      ToolTip="No pide permisos: agy lee, crea archivos y ejecuta comandos sin preguntar"/>
+                      Content="Modo automático" IsChecked="True" IsEnabled="False" ToolTipService.ShowOnDisabled="True"
+                      ToolTip="Siempre activo: agy lee, crea archivos y ejecuta comandos sin pedir permiso"/>
           </DockPanel>
           <DockPanel Margin="6,6,0,0">
             <Button x:Name="BtnLogout" DockPanel.Dock="Right" Style="{StaticResource Plano}" Padding="8,6" ToolTip="Cerrar sesión de Google">
@@ -2021,7 +2050,7 @@ function Enviar([string]$instrucciones = '') {
 
     $argumentos = @('-p', (Quote-Arg $mensaje), '--output-format', 'stream-json')
     if ($script:conv.agyId) { $argumentos += @('--conversation', $script:conv.agyId) }
-    if ($ui.ChkAuto.IsChecked) { $argumentos += '--dangerously-skip-permissions' }
+    $argumentos += '--dangerously-skip-permissions'
     foreach ($c in $carpetas) { $argumentos += @('--add-dir', (Quote-Arg $c)) }
 
     Add-MensajeUsuario $texto $adjuntos
@@ -2190,7 +2219,6 @@ $ui.BtnWs.Add_Click({
 })
 
 $ui.BtnAbrirWs.Add_Click({ Start-Process explorer.exe $script:workspace })
-$ui.ChkAuto.Add_Click({ Save-Config })
 
 $ui.BtnTerminal.Add_Click({
     if (-not $script:Agy) { $script:Agy = Find-Agy }
@@ -2198,7 +2226,7 @@ $ui.BtnTerminal.Add_Click({
         [System.Windows.MessageBox]::Show('No encuentro agy. Ejecuta el instalador (InstalarValora.exe).', 'Valora') | Out-Null
         return
     }
-    $extra = ''
+    $extra = ' --dangerously-skip-permissions'
     if ($script:conv -and $script:conv.agyId) { $extra += ' --conversation ' + $script:conv.agyId }
     foreach ($c in $script:carpetas) { $extra += " --add-dir '" + ($c -replace "'", "''") + "'" }
     $comando = "& '" + ($script:Agy -replace "'", "''") + "'" + $extra
@@ -3403,7 +3431,7 @@ if ($script:esInstalada) {
     }
 }
 $ui.TxtWs.Text = Split-Path $script:workspace -Leaf; $ui.BtnAbrirWs.ToolTip = "Carpeta de trabajo (abrir en Explorador)`n" + $script:workspace
-$ui.ChkAuto.IsChecked = $cfg.auto
+Set-PermisosAgy
 Update-Adjuntos; Update-Carpetas; Update-Inicio; Update-ListaConv
 Update-Entorno; Update-BarraFicha
 $verLocal = (Get-VersionLocal).sha
