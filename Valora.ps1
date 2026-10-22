@@ -2974,9 +2974,40 @@ $script:ytEstado = $null
 $script:ytTicks = 0
 $script:ytMensajeCredHasta = Get-Date
 
+# Dónde está la web: la que se haya escrito a mano; si no, en el PC donde corre (el de Rubén)
+# la local, y en los demás la dirección pública que la web deja en la rama «direccion» del
+# repo de Valora cada vez que arranca (con trycloudflare cambia en cada arranque).
+$script:ytUrlAuto = $null
+$script:ytEsServidor = Test-Path (Join-Path $env:USERPROFILE 'Documents\youtube\web.py')
+
 function Get-UrlYT {
+    if ($script:ytUrl -and $script:ytUrl -notmatch 'trycloudflare\.com') { return $script:ytUrl.TrimEnd('/') }
+    if ($script:ytEsServidor) { return 'http://127.0.0.1:8080' }
+    if ($script:ytUrlAuto) { return $script:ytUrlAuto }
     if ($script:ytUrl) { return $script:ytUrl.TrimEnd('/') }
-    return 'http://127.0.0.1:8080'   # en el PC de Rubén, donde corre la web
+    return 'http://127.0.0.1:8080'
+}
+
+function Update-UrlAutoYT {
+    if ($script:ytEsServidor) { return }
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072
+    $wc = New-Object System.Net.WebClient
+    $wc.Encoding = [System.Text.Encoding]::UTF8
+    $wc.Headers['User-Agent'] = 'Valora'
+    $url = 'https://raw.githubusercontent.com/rubencandeal-a11y/valora/direccion/direccion.json?t=' + [DateTime]::UtcNow.Ticks
+    [void]$script:httpPend.Add(@{ tarea = $wc.DownloadStringTaskAsync($url); json = $true; ctx = $null; alTerminar = {
+        param($res, $err)
+        if ($err -or -not $res.url) { return }
+        $nueva = ([string]$res.url).TrimEnd('/')
+        if ($nueva -ne $script:ytUrlAuto) {
+            $script:ytUrlAuto = $nueva
+            # Si al arrancar no llegaba (aún no había dirección), se quita el aviso y se reintenta.
+            if ($ui.YTServidor.Visibility -eq 'Visible' -and (Get-TokenYT)) { $ui.YTServidor.Visibility = 'Collapsed' }
+            $script:ytPidiendoEstado = $null; $script:ytCargando = $null
+            if ($script:modo -eq 'youtube') { Get-EstadoYT; Get-VideosYT }
+        }
+    } })
+    $timerHttp.Start()
 }
 
 function Get-TokenYT {
@@ -3577,7 +3608,11 @@ $timerYT.Interval = [TimeSpan]::FromSeconds(5)
 $script:ytUltimoListado = Get-Date
 $timerYT.Add_Tick({
     Get-EstadoYT
-    if (((Get-Date) - $script:ytUltimoListado).TotalSeconds -ge 60 -and $script:ytSel.Count -eq 0) { $script:ytUltimoListado = Get-Date; Get-VideosYT }
+    if (((Get-Date) - $script:ytUltimoListado).TotalSeconds -ge 60) {
+        $script:ytUltimoListado = Get-Date
+        Update-UrlAutoYT
+        if ($script:ytSel.Count -eq 0) { Get-VideosYT }
+    }
 })
 
 $ui.BtnModoValora.Add_Click({ Set-Modo 'valora' })
@@ -3966,6 +4001,7 @@ if (Test-Path $ReanudarFile) {
         }
     } catch {}
 }
+Update-UrlAutoYT
 if ($cfg.modo -eq 'youtube') { Set-Modo 'youtube' }
 $ui.TxtVersion.Text = 'Versión ' + $(if (-not $script:esInstalada) { 'de pruebas (no se actualiza)' } elseif ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
 if ($script:relevo) { $ui.TxtVersion.Text += ' · recién actualizada ✓'; $ui.TxtVersion.Foreground = Brush '#81C995' }
