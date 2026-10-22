@@ -50,7 +50,7 @@ function Load-Config {
             if ($null -ne $j.auto) { $cfg.auto = [bool]$j.auto }
             if ($j.carpetas) { $cfg.carpetas = @($j.carpetas) }
             if ($j.fcEntorno) { $cfg.fcEntorno = $j.fcEntorno }
-            foreach ($k in 'ytUrl', 'ytUsuario', 'ytToken', 'modo', 'estilo', 'permisosAgy') { if ($j.$k) { $cfg[$k] = $j.$k } }
+            foreach ($k in 'ytUrl', 'ytUsuario', 'ytToken', 'modo', 'estilo', 'permisosAgy', 'ytServidorLocal', 'ytClaveLocal') { if ($j.$k) { $cfg[$k] = $j.$k } }
             if ($j.fcClaves) { foreach ($pr in $j.fcClaves.PSObject.Properties) { $cfg.fcClaves[$pr.Name] = $pr.Value } }
         } catch {}
     }
