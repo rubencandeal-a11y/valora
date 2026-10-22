@@ -222,7 +222,7 @@ def subir_video(youtube, v: dict, privacidad: str, al_avanzar=None) -> str:
     categoria = CATEGORIAS.get((info.get("categories") or [""])[0], CATEGORIA_POR_DEFECTO)
     cuerpo = {
         "snippet": {
-            "title": (info.get("title") or v["id"])[:100],
+            "title": (v.get("titulo") or info.get("title") or v["id"])[:100],
             "description": (info.get("description") or "")[:5000],
             "tags": info.get("tags") or [],
             "categoryId": categoria,
@@ -286,7 +286,7 @@ def subir_uno(youtube, v: dict, privacidad: str, listas_de: dict, existentes: di
     avisar = al_avanzar or (lambda porcentaje, texto: None)
     from googleapiclient.http import MediaFileUpload
 
-    titulo = v["info"].get("title")
+    titulo = v.get("titulo") or v["info"].get("title")
     nuevo = subir_video(youtube, v, privacidad, al_avanzar)
     registro = {"nuevo": nuevo, "titulo": titulo, "fecha": f"{datetime.now():%Y-%m-%d %H:%M}",
                 "privacidad": privacidad, "playlists": []}

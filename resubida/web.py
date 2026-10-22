@@ -30,6 +30,7 @@ import descargar
 import editar
 import inventario
 import subir
+import titulo
 
 BASE = Path(__file__).resolve().parent
 RUTA_CONFIG = BASE / "config.json"
@@ -156,6 +157,18 @@ def procesar_siguiente() -> bool:
             al_avanzar(0, "Preparando la entrada y la salida")
             v = dict(v, video=editar.editar(v, al_avanzar))
             cambiar(vid, editado=True)
+        modo_titulo = item.get("titulo_modo", "igual")
+        if modo_titulo != "igual":
+            if not item.get("titulo_nuevo"):
+                if modo_titulo == "ia":
+                    al_avanzar(0, "Pensando un título nuevo con IA")
+                info = v.get("info") or {}
+                nuevo_titulo = titulo.nuevo_titulo(
+                    modo_titulo, info.get("title") or item["titulo"], info.get("description") or "",
+                    al_fallar=lambda error: subir.log(f"  título con IA no disponible ({error}); se usa «Recuerdo»"))
+                cambiar(vid, titulo_nuevo=nuevo_titulo)
+                item["titulo_nuevo"] = nuevo_titulo
+            v = dict(v, titulo=item["titulo_nuevo"])
         cambiar(vid, estado="subiendo")
         al_avanzar(0, "Conectando con YouTube")
         if conexion["youtube"] is None:
@@ -346,6 +359,9 @@ def api_cola_añadir():
     datos = request.get_json(force=True)
     privacidad = datos.get("privacidad", "private")
     entrada_salida = bool(datos.get("entrada_salida"))
+    modo_titulo = datos.get("titulo", "igual")
+    if modo_titulo not in titulo.MODOS:
+        modo_titulo = "igual"
     if privacidad not in ("private", "unlisted", "public"):
         abort(400)
     ids = [i for i in datos.get("ids", []) if re.fullmatch(r"[\w-]{11}", i)]
@@ -360,12 +376,12 @@ def api_cola_añadir():
             if vid in activos or vid in subidos or vid not in catalogo:
                 continue
             cola.append({"id": vid, "titulo": catalogo[vid]["titulo"], "privacidad": privacidad,
-                         "entrada_salida": entrada_salida, "estado": "pendiente", "por": g.usuario,
+                         "entrada_salida": entrada_salida, "titulo_modo": modo_titulo, "estado": "pendiente", "por": g.usuario,
                          "pedido": f"{datetime.now():%Y-%m-%d %H:%M}"})
             añadidos += 1
         guardar_cola(cola)
     subir.log(f"{g.usuario} añade {añadidos} vídeos a la cola ({privacidad}"
-              f"{', con entrada y salida' if entrada_salida else ''})")
+              f"{', con entrada y salida' if entrada_salida else ''}, título: {modo_titulo})")
     return jsonify({"añadidos": añadidos})
 
 

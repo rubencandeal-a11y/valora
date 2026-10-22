@@ -712,6 +712,12 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <ComboBoxItem Content="Ocultos" Tag="unlisted"/>
               <ComboBoxItem Content="Públicos" Tag="public"/>
             </ComboBox>
+            <ComboBox x:Name="YTTitulo" MinWidth="150" Margin="8,0,0,0" VerticalContentAlignment="Center"
+                      ToolTip="Para que el vídeo nuevo no se titule igual que el original">
+              <ComboBoxItem Content="Título con IA" Tag="ia" IsSelected="True"/>
+              <ComboBoxItem Content="Recuerdo · título" Tag="recuerdo"/>
+              <ComboBoxItem Content="Título igual" Tag="igual"/>
+            </ComboBox>
             <CheckBox x:Name="ChkYTEntradaSalida" IsChecked="True" Foreground="#ECE8E1" VerticalAlignment="Center" Margin="12,0,0,0" Content="Con entrada y salida"
                       ToolTip="Antes de subirlo, cada vídeo se rehace con la entrada animada (fecha) y la salida (versículo y canal)"/>
             <Button x:Name="BtnYTResubir" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="14,6"
@@ -970,7 +976,7 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'YTCred','BtnYTCredCerrar','TxtYTCredEstado','BtnYTPaso2','BtnYTPaso4','YTClientId',
                'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
                'Lateral','LogoFondo','LogoLetra','LogoTexto',
-               'BtnYTVerResubida','BtnYTAbrirCanal','YTResubida','BtnYTResubidaCerrar','TxtYTResubida','YTResubidaLista','BarraYTResubida',
+               'BtnYTVerResubida','BtnYTAbrirCanal','YTTitulo','YTResubida','BtnYTResubidaCerrar','TxtYTResubida','YTResubidaLista','BarraYTResubida',
                'BtnEstilo','IcoEstilo','PanelEstilo','AtajosEstilo','TxtEstilo','BtnEstiloBorrar','BtnEstiloCancelar','BtnEstiloGuardar') {
     $ui[$n] = $win.FindName($n)
 }
@@ -3374,12 +3380,14 @@ function Send-ResubirYT {
     $canal = if ($script:ytEstado -and $script:ytEstado.youtube_conectado) { $script:ytEstado.canal } else { $null }
     $aviso = if ($canal) { "al canal `"$canal`"" } else { "(YouTube todavía no está conectado: se subirán al canal que se conecte)" }
     $entradaSalida = [bool]$ui.ChkYTEntradaSalida.IsChecked
+    $modoTitulo = Get-ValorCombo $ui.YTTitulo
     $con = if ($entradaSalida) { ', con entrada y salida,' } else { '' }
+    $con += switch ($modoTitulo) { 'ia' { ' con un título nuevo hecho con IA,' } 'recuerdo' { ' con «Recuerdo ·» delante del título,' } default { '' } }
     $r = [System.Windows.MessageBox]::Show($win, "Se van a volver a subir $($ids.Count) vídeos$con $aviso como $(([string]$item.Content).ToLower()).`n`n¿Seguir?",
         'Resubir vídeos', 'YesNo', 'Question')
     if ($r -ne 'Yes') { return }
     $ui.BtnYTResubir.IsEnabled = $false
-    Invoke-YT 'POST' '/api/cola' @{ ids = $ids; privacidad = [string]$item.Tag; entrada_salida = $entradaSalida } {
+    Invoke-YT 'POST' '/api/cola' @{ ids = $ids; privacidad = [string]$item.Tag; entrada_salida = $entradaSalida; titulo = $modoTitulo } {
         param($res, $err, $ids)
         if ($err) { Update-SeleccionYT; Show-ErrorRedYT $err; return }
         # Sin ventanas modales aquí: esto corre dentro del temporizador que atiende las peticiones.
@@ -3613,7 +3621,7 @@ function Get-ResumenYT($items) {
     $hechos = @($items | Where-Object { $_.estado -eq 'hecho' })
     $errores = @($items | Where-Object { $_.estado -eq 'error' })
     $lineas = @("Resubida: $($hechos.Count) subidos" + $(if ($errores.Count) { ", $($errores.Count) con error" } else { '' }), '')
-    foreach ($i in $hechos) { $lineas += "$($i.titulo): https://www.youtube.com/watch?v=$($i.nuevo)" }
+    foreach ($i in $hechos) { $lineas += "$(if ($i.titulo_nuevo) { $i.titulo_nuevo } else { $i.titulo }): https://www.youtube.com/watch?v=$($i.nuevo)" }
     foreach ($i in $errores) { $lineas += "$($i.titulo): error ($($i.error))" }
     return ($lineas -join "`r`n")
 }
@@ -3731,6 +3739,7 @@ function Update-ResubidaYT($e) {
         }
         $izq = New-Object System.Windows.Controls.StackPanel
         [void]$izq.Children.Add((New-TextoYT $item.titulo '#ECE8E1' 13.5))
+        if ($item.titulo_nuevo) { [void]$izq.Children.Add((New-TextoYT "Se sube como: $($item.titulo_nuevo)" '#C8A15A' 12)) }
         $linea = New-Object System.Windows.Controls.TextBlock
         $linea.FontSize = 12; $linea.Margin = '0,3,0,0'
         if ($item.estado -eq 'hecho') {

@@ -7,7 +7,7 @@ if (-not (Test-Path (Join-Path $origen 'web.py'))) { Write-Host '[AVISO] No est√
 
 if (Test-Path $destino) { Remove-Item $destino -Recurse -Force }
 New-Item -ItemType Directory -Force $destino | Out-Null
-foreach ($f in 'web.py', 'subir.py', 'descargar.py', 'editar.py', 'inventario.py', 'requirements.txt') {
+foreach ($f in 'web.py', 'subir.py', 'descargar.py', 'editar.py', 'inventario.py', 'titulo.py', 'requirements.txt') {
     Copy-Item (Join-Path $origen $f) $destino
 }
 foreach ($d in 'templates', 'static', 'plantilla-entrada-salida') {
