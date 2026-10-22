@@ -558,6 +558,10 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             </StackPanel>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+            <Button x:Name="BtnYTAbrirCanal" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Abrir canal ↗" Visibility="Collapsed"
+                    ToolTip="Los últimos vídeos del canal en YouTube Studio (también los privados)"/>
+            <Button x:Name="BtnYTVerResubida" Style="{StaticResource Plano}" Foreground="#ECE8E1" Content="Ver resubida" Visibility="Collapsed"
+                    ToolTip="En qué va cada vídeo de la última resubida, con su compilación y su enlace"/>
             <Button x:Name="BtnYTConectar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Margin="6,0,0,0" Content="Conectar YouTube"
                     ToolTip="Entrar con la cuenta de Google dueña del canal al que se suben los vídeos"/>
             <Button x:Name="BtnYTActualizar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Actualizar listado"
@@ -744,6 +748,29 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
           </Border>
         </Grid>
       </DockPanel>
+
+      <!-- Seguimiento de la última resubida: en qué paso va cada vídeo, su compilación y su enlace -->
+      <Grid x:Name="YTResubida" Background="#CC0E1014" Visibility="Collapsed">
+        <Border Width="640" MaxHeight="560" Background="#252930" CornerRadius="18" Padding="22,18" BorderBrush="#363C47" BorderThickness="1"
+                VerticalAlignment="Center" HorizontalAlignment="Center">
+          <DockPanel>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+              <TextBlock Text="Resubida" FontSize="20" FontWeight="SemiBold"/>
+              <Button x:Name="BtnYTResubidaCerrar" Style="{StaticResource Plano}" Padding="6" HorizontalAlignment="Right" ToolTip="Cerrar (sigue trabajando por detrás)">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE711;" FontSize="11"/>
+              </Button>
+            </Grid>
+            <TextBlock x:Name="TxtYTResubida" DockPanel.Dock="Top" Foreground="#8C929C" FontSize="13" Margin="0,0,0,6" TextWrapping="Wrap"/>
+            <ProgressBar x:Name="BarraYTResubida" DockPanel.Dock="Top" Height="6" Minimum="0" Maximum="100" Margin="0,0,0,14"
+                         Background="#363C47" Foreground="#C4302B" BorderThickness="0"/>
+            <TextBlock DockPanel.Dock="Bottom" Foreground="#6A707B" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"
+                       Text="Se puede cerrar: la resubida sigue en el servidor y este panel se vuelve a abrir con «Ver resubida»."/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+              <StackPanel x:Name="YTResubidaLista"/>
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+      </Grid>
     </Grid>
 
     <!-- Cómo quiere el usuario que responda Valora -->
@@ -940,6 +967,7 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'YTCred','BtnYTCredCerrar','TxtYTCredEstado','BtnYTPaso2','BtnYTPaso4','YTClientId',
                'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
                'Lateral','LogoFondo','LogoLetra','LogoTexto',
+               'BtnYTVerResubida','BtnYTAbrirCanal','YTResubida','BtnYTResubidaCerrar','TxtYTResubida','YTResubidaLista','BarraYTResubida',
                'BtnEstilo','IcoEstilo','PanelEstilo','AtajosEstilo','TxtEstilo','BtnEstiloBorrar','BtnEstiloCancelar','BtnEstiloGuardar') {
     $ui[$n] = $win.FindName($n)
 }
@@ -3124,14 +3152,17 @@ function Send-ResubirYT {
     if ($r -ne 'Yes') { return }
     $ui.BtnYTResubir.IsEnabled = $false
     Invoke-YT 'POST' '/api/cola' @{ ids = $ids; privacidad = [string]$item.Tag; entrada_salida = $entradaSalida } {
-        param($res, $err)
+        param($res, $err, $ids)
         if ($err) { Update-SeleccionYT; Show-ErrorRedYT $err; return }
         # Sin ventanas modales aquí: esto corre dentro del temporizador que atiende las peticiones.
         $script:ytSel.Clear()
+        $script:ytLote = @($ids)
+        $script:ytLoteAvisado = $false
+        $ui.YTResubida.Visibility = 'Visible'
         Set-Estado "$($res.añadidos) vídeos añadidos a la cola." '#81C995'
         Get-VideosYT
         Get-EstadoYT
-    }
+    } $ids
 }
 
 function Get-EstadoYT {
@@ -3203,6 +3234,7 @@ function New-TextoYT([string]$texto, [string]$color = '#ECE8E1', [double]$tam = 
 }
 
 function Update-EstadoYT($e) {
+    $ui.BtnYTAbrirCanal.Visibility = if ($e.youtube_conectado -and $e.canal_id) { 'Visible' } else { 'Collapsed' }
     if ($e.youtube_conectado) {
         $ui.TxtYTCanal.Text = 'Sube al canal: ' + $(if ($e.canal) { $e.canal } else { 'conectado' })
         $ui.ChipYTCanal.Background = Brush '#1F4A35'
@@ -3301,6 +3333,208 @@ function Update-EstadoYT($e) {
         $b.Child = $g
         [void]$ui.YTCola.Children.Add($b)
     }
+    Update-ResubidaYT $e
+}
+
+# --- Panel de la última resubida: un vídeo por fila con sus pasos, la compilación (el vídeo ya
+# rehecho con entrada y salida, que se baja del servidor) y el enlace del vídeo nuevo en YouTube.
+$script:ytLote = @()
+$script:ytLoteAvisado = $true
+
+function New-BotonYT([string]$texto, [string]$color, $tag, [string]$ayuda) {
+    $l = New-Object System.Windows.Controls.Button
+    $l.Style = $win.FindResource('Plano'); $l.Padding = '8,3'; $l.Margin = '6,0,0,0'; $l.FontSize = 12.5
+    $l.Foreground = Brush $color; $l.Content = $texto; $l.Tag = $tag; $l.ToolTip = $ayuda
+    return $l
+}
+
+function Open-CompilacionYT($boton) {
+    $id = [string]$boton.Tag
+    $carpeta = Join-Path $env:TEMP 'Valora\compilaciones'
+    [void](New-Item -ItemType Directory -Force $carpeta)
+    $destino = Join-Path $carpeta "$id.editado.mp4"
+    if (Test-Path $destino) { Start-Process $destino; return }
+    $boton.IsEnabled = $false; $boton.Content = 'Bajando…'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072
+    $wc = New-Object System.Net.WebClient
+    $wc.Headers['User-Agent'] = 'Valora'
+    $token = Get-TokenYT
+    if ($token) { $wc.Headers['Authorization'] = 'Bearer ' + $token }
+    $parcial = "$destino.parcial"
+    $tarea = $wc.DownloadFileTaskAsync((Get-UrlYT) + "/api/editado/$id", $parcial)
+    [void]$script:httpPend.Add(@{ tarea = $tarea; json = $false; ctx = @{ boton = $boton; parcial = $parcial; destino = $destino }; alTerminar = {
+        param($res, $err, $ctx)
+        $ctx.boton.IsEnabled = $true; $ctx.boton.Content = 'Ver compilación'
+        if ($err) {
+            Remove-Item $ctx.parcial -ErrorAction SilentlyContinue
+            if (Test-CaducadoYT) { return }
+            Set-Estado "No se ha podido bajar la compilación: $err" '#F28B82'; return
+        }
+        Move-Item $ctx.parcial $ctx.destino -Force
+        Start-Process $ctx.destino
+    } })
+    $timerHttp.Start()
+}
+
+function Get-ResumenYT($items) {
+    $hechos = @($items | Where-Object { $_.estado -eq 'hecho' })
+    $errores = @($items | Where-Object { $_.estado -eq 'error' })
+    $lineas = @("Resubida: $($hechos.Count) subidos" + $(if ($errores.Count) { ", $($errores.Count) con error" } else { '' }), '')
+    foreach ($i in $hechos) { $lineas += "$($i.titulo): https://www.youtube.com/watch?v=$($i.nuevo)" }
+    foreach ($i in $errores) { $lineas += "$($i.titulo): error ($($i.error))" }
+    return ($lineas -join "`r`n")
+}
+
+# Cuánto lleva un vídeo (0 a 1): cada paso pesa lo que suele tardar, y el paso en curso
+# suma su porcentaje según lo que cuenta el servidor.
+function Get-AvanceYT($item, $prog) {
+    if ($item.estado -in 'hecho', 'error') { return 1.0 }
+    $pesos = if ($item.entrada_salida) { [ordered]@{ descargando = 0.2; editando = 0.45; subiendo = 0.3; limpiando = 0.05 } } else { [ordered]@{ descargando = 0.3; subiendo = 0.65; limpiando = 0.05 } }
+    if (-not $pesos.Contains([string]$item.estado)) { return 0.0 }
+    $avance = 0.0
+    foreach ($paso in $pesos.Keys) {
+        if ($paso -eq $item.estado) {
+            if ($prog -and [string]$prog.id -eq [string]$item.id) { $avance += $pesos[$paso] * [double]$prog.porcentaje / 100 }
+            break
+        }
+        $avance += $pesos[$paso]
+    }
+    return $avance
+}
+
+# Abre el canal donde se ve lo último subido: la pestaña Shorts o Vídeos de la página pública
+# (ya ordenadas por más recientes), o YouTube Studio si lo subido es privado, que en la página
+# pública no aparece.
+# El canal se abre en un perfil de Chrome propio, con la sesión de la cuenta dueña del canal
+# iniciada (la primera vez hay que entrar en él). Sin Chrome, en el navegador por defecto.
+function Open-WebCanalYT([string]$url) {
+    $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+        "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $chrome) { Start-Process $url; return }
+    if (-not (Test-Path "$env:LOCALAPPDATA\Google\Chrome\User Data\Valora YouTube\Cookies") -and
+        -not (Test-Path "$env:LOCALAPPDATA\Google\Chrome\User Data\Valora YouTube\Network\Cookies")) {
+        Set-Estado 'Primera vez: en la ventana de Chrome que se abre, entra con la cuenta de Google del canal. Luego ya no hace falta.' '#F2C46D'
+    }
+    Start-Process $chrome -ArgumentList '--profile-directory="Valora YouTube"', $url
+}
+
+function Open-CanalYT($items = @()) {
+    $id = if ($script:ytEstado) { [string]$script:ytEstado.canal_id } else { '' }
+    if (-not $id) { return }
+    $hechos = @($items | Where-Object { $_.estado -eq 'hecho' })
+    if (-not $hechos.Count -or @($hechos | Where-Object { $_.privacidad -eq 'private' }).Count) {
+        Open-WebCanalYT "https://studio.youtube.com/channel/$id/videos/upload"; return
+    }
+    $ids = @($hechos | ForEach-Object { [string]$_.id })
+    $shorts = @($script:ytVideos | Where-Object { $ids -contains [string]$_.id -and $_.tipo -eq 'Short' }).Count
+    $pestaña = if ($shorts -ge ($hechos.Count / 2)) { 'shorts' } else { 'videos' }
+    Open-WebCanalYT "https://www.youtube.com/channel/$id/$pestaña"
+}
+
+function Update-ResubidaYT($e) {
+    $porId = @{}
+    foreach ($i in @($e.cola)) { $porId[[string]$i.id] = $i }
+    # Sin resubida lanzada desde aquí, el panel sigue lo que haya en marcha en el servidor.
+    $ids = @($script:ytLote | Where-Object { $porId.ContainsKey([string]$_) })
+    if (-not $ids.Count) { $ids = @($e.cola | Where-Object { $_.estado -notin 'hecho', 'error' } | ForEach-Object { [string]$_.id }) }
+    $ui.BtnYTVerResubida.Visibility = if ($ids.Count) { 'Visible' } else { 'Collapsed' }
+    if (-not $ids.Count) { $ui.YTResubida.Visibility = 'Collapsed'; return }
+    $items = @($ids | ForEach-Object { $porId[[string]$_] })
+    $terminados = @($items | Where-Object { $_.estado -in 'hecho', 'error' }).Count
+    $acabado = $terminados -eq $items.Count
+    if ($acabado -and -not $script:ytLoteAvisado) {
+        $script:ytLoteAvisado = $true
+        $ui.YTResubida.Visibility = 'Visible'
+        Set-Estado 'Resubida terminada. Abriendo el canal con los últimos vídeos.' '#81C995'
+        if (@($items | Where-Object { $_.estado -eq 'hecho' }).Count) { Open-CanalYT $items }
+    }
+    $timerYT.Interval = [TimeSpan]::FromSeconds($(if ($ui.YTResubida.Visibility -eq 'Visible' -and -not $acabado) { 1.5 } else { 5 }))
+    if ($ui.YTResubida.Visibility -ne 'Visible') { return }
+
+    $hechos = @($items | Where-Object { $_.estado -eq 'hecho' }).Count
+    $errores = @($items | Where-Object { $_.estado -eq 'error' }).Count
+    $total = 0.0
+    foreach ($i in $items) { $total += Get-AvanceYT $i $e.progreso }
+    $porcentaje = [math]::Floor(100 * $total / $items.Count)
+    $ui.BarraYTResubida.Value = $porcentaje
+    $ui.BarraYTResubida.Foreground = Brush $(if ($acabado -and -not $errores) { '#81C995' } elseif ($acabado) { '#F2C46D' } else { '#C4302B' })
+    $ui.TxtYTResubida.Text = if ($acabado) {
+        "Terminada: $hechos subidos" + $(if ($errores) { ", $errores con error" } else { '' }) + '.'
+    } elseif ($e.pausa_hasta) { "$terminados de $($items.Count) · $porcentaje % · en pausa hasta las $($e.pausa_hasta): $($e.motivo_pausa)" } else { "$terminados de $($items.Count) terminados · $porcentaje %" }
+    $ui.TxtYTResubida.Foreground = Brush $(if ($acabado -and -not $errores) { '#81C995' } elseif ($acabado) { '#F2C46D' } else { '#8C929C' })
+
+    $ui.YTResubidaLista.Children.Clear()
+    if ($acabado) {
+        $copiar = New-BotonYT 'Copiar resumen' '#14161A' (Get-ResumenYT $items) 'Copia los títulos con su enlace de YouTube'
+        $copiar.Background = Brush '#ECE8E1'; $copiar.FontWeight = 'SemiBold'; $copiar.Margin = '0,0,0,10'; $copiar.HorizontalAlignment = 'Left'
+        $copiar.Add_Click({ try { [System.Windows.Clipboard]::SetText([string]$this.Tag); Set-Estado 'Resumen copiado.' '#81C995' } catch {} })
+        $canal = New-BotonYT 'Abrir el canal ↗' '#FFFFFF' $items 'Lo último subido: Shorts o Vídeos del canal (YouTube Studio si es privado)'
+        $canal.Background = Brush '#C4302B'; $canal.FontWeight = 'SemiBold'; $canal.Margin = '8,0,0,0'
+        $canal.Add_Click({ Open-CanalYT $this.Tag })
+        $botones = New-Object System.Windows.Controls.StackPanel
+        $botones.Orientation = 'Horizontal'; $botones.Margin = '0,0,0,10'
+        $copiar.Margin = '0'
+        [void]$botones.Children.Add($copiar); [void]$botones.Children.Add($canal)
+        [void]$ui.YTResubidaLista.Children.Add($botones)
+    }
+    $pasos = @(@('descargando', 'Bajar'), @('editando', 'Editar'), @('subiendo', 'Subir'), @('limpiando', 'Limpiar'))
+    foreach ($item in $items) {
+        $b = New-Object System.Windows.Controls.Border
+        $b.BorderBrush = Brush '#363C47'; $b.BorderThickness = '0,0,0,1'; $b.Padding = '0,8'
+        $g = New-Object System.Windows.Controls.DockPanel
+        $der = New-Object System.Windows.Controls.StackPanel
+        $der.Orientation = 'Horizontal'; $der.VerticalAlignment = 'Center'
+        [System.Windows.Controls.DockPanel]::SetDock($der, 'Right')
+        # Una vez subido, la compilación se borra del servidor: el vídeo de YouTube es esa misma compilación.
+        if ($item.entrada_salida -and ($item.editado -or $item.estado -eq 'subiendo') -and $item.estado -notin 'limpiando', 'hecho', 'error') {
+            $c = New-BotonYT 'Ver compilación' '#C8A15A' ([string]$item.id) 'El vídeo con la entrada y la salida, tal como se sube'
+            $c.Add_Click({ Open-CompilacionYT $this })
+            [void]$der.Children.Add($c)
+        }
+        if ($item.estado -eq 'hecho' -and $item.nuevo) {
+            $l = New-BotonYT 'YouTube ↗' '#81C995' "https://www.youtube.com/watch?v=$($item.nuevo)" 'Abrir el vídeo nuevo'
+            $l.Add_Click({ Start-Process $this.Tag })
+            [void]$der.Children.Add($l)
+        }
+        $izq = New-Object System.Windows.Controls.StackPanel
+        [void]$izq.Children.Add((New-TextoYT $item.titulo '#ECE8E1' 13.5))
+        $linea = New-Object System.Windows.Controls.TextBlock
+        $linea.FontSize = 12; $linea.Margin = '0,3,0,0'
+        if ($item.estado -eq 'hecho') {
+            $linea.Inlines.Add((New-Object System.Windows.Documents.Run ("Subido · youtu.be/$($item.nuevo)" + $(if ($item.entrada_salida) { ' · compilación borrada del PC' } else { '' })))); $linea.Foreground = Brush '#81C995'
+        } elseif ($item.estado -eq 'error') {
+            $linea.Inlines.Add((New-Object System.Windows.Documents.Run "Error: $($item.error)")); $linea.Foreground = Brush '#F28B82'; $linea.TextWrapping = 'Wrap'
+        } else {
+            # Bajar › Editar › Subir, con el paso en curso resaltado y los ya hechos en verde.
+            $actual = [array]::IndexOf(@($pasos | ForEach-Object { $_[0] }), [string]$item.estado)
+            $lista = if ($item.entrada_salida) { $pasos } else { @($pasos[0], $pasos[2], $pasos[3]) }
+            $primero = $true
+            foreach ($p in $lista) {
+                if (-not $primero) { $s = New-Object System.Windows.Documents.Run '  ›  '; $s.Foreground = Brush '#4A505B'; $linea.Inlines.Add($s) }
+                $primero = $false
+                $n = [array]::IndexOf(@($pasos | ForEach-Object { $_[0] }), $p[0])
+                $r = New-Object System.Windows.Documents.Run $(if ($n -eq $actual) { "$($p[1])…" } else { $p[1] })
+                $r.Foreground = Brush $(if ($actual -lt 0) { '#8C929C' } elseif ($n -lt $actual) { '#81C995' } elseif ($n -eq $actual) { '#F2C46D' } else { '#6A707B' })
+                if ($n -eq $actual) { $r.FontWeight = 'SemiBold' }
+                $linea.Inlines.Add($r)
+            }
+            if ($actual -lt 0) { $r = New-Object System.Windows.Documents.Run '   (en espera)'; $r.Foreground = Brush '#6A707B'; $linea.Inlines.Add($r) }
+        }
+        [void]$izq.Children.Add($linea)
+        $prog = $e.progreso
+        if ($prog -and [string]$prog.id -eq [string]$item.id -and $item.estado -notin 'hecho', 'error') {
+            # Lo que está haciendo ahora mismo, con su barra y su porcentaje.
+            $barra = New-Object System.Windows.Controls.ProgressBar
+            $barra.Height = 4; $barra.Minimum = 0; $barra.Maximum = 100; $barra.Value = [double]$prog.porcentaje
+            $barra.Margin = '0,6,0,3'; $barra.BorderThickness = 0
+            $barra.Background = Brush '#363C47'; $barra.Foreground = Brush '#F2C46D'
+            [void]$izq.Children.Add($barra)
+            [void]$izq.Children.Add((New-TextoYT "$($prog.texto) · $([math]::Floor([double]$prog.porcentaje)) %" '#CDCAC3' 12))
+        }
+        [void]$g.Children.Add($der); [void]$g.Children.Add($izq)
+        $b.Child = $g
+        [void]$ui.YTResubidaLista.Children.Add($b)
+    }
 }
 
 function Set-Modo([string]$modo) {
@@ -3340,10 +3574,10 @@ function Set-Modo([string]$modo) {
 # para no mover la lista mientras se selecciona).
 $timerYT = New-Object System.Windows.Threading.DispatcherTimer
 $timerYT.Interval = [TimeSpan]::FromSeconds(5)
+$script:ytUltimoListado = Get-Date
 $timerYT.Add_Tick({
     Get-EstadoYT
-    $script:ytTicks++
-    if ($script:ytTicks % 12 -eq 0 -and $script:ytSel.Count -eq 0) { Get-VideosYT }
+    if (((Get-Date) - $script:ytUltimoListado).TotalSeconds -ge 60 -and $script:ytSel.Count -eq 0) { $script:ytUltimoListado = Get-Date; Get-VideosYT }
 })
 
 $ui.BtnModoValora.Add_Click({ Set-Modo 'valora' })
@@ -3449,6 +3683,9 @@ $ui.BtnYTNinguno.Add_Click({
     Update-SeleccionYT
 })
 $ui.BtnYTResubir.Add_Click({ Send-ResubirYT })
+$ui.BtnYTVerResubida.Add_Click({ $ui.YTResubida.Visibility = 'Visible'; if ($script:ytEstado) { Update-ResubidaYT $script:ytEstado } })
+$ui.BtnYTAbrirCanal.Add_Click({ Open-CanalYT })
+$ui.BtnYTResubidaCerrar.Add_Click({ $ui.YTResubida.Visibility = 'Collapsed' })
 
 $VersionFile = Join-Path $ConfigDir 'version.json'
 $script:upd = $null
