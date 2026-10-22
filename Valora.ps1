@@ -75,6 +75,9 @@ function Set-PermisosAgy {
         if (Test-Path $ruta) { $s = Get-Content $ruta -Raw -Encoding UTF8 | ConvertFrom-Json }
         if (-not $s) { $s = [pscustomobject]@{} }
         $s | Add-Member -NotePropertyName dangerously_skip_permissions -NotePropertyValue $true -Force
+        # El modelo más rápido de los que da agy (medido: Low resuelve antes que Medium y High,
+        # con menos comandos). Con agy cada comando que lanza cuesta 4-5 s.
+        $s | Add-Member -NotePropertyName model -NotePropertyValue 'Gemini 3.8 Flash (Low)' -Force
         $permisos = if ($s.permissions) { $s.permissions } else { [pscustomobject]@{} }
         $permitidos = @($permisos.allow | Where-Object { $_ })
         if ($permitidos -notcontains 'command(*)') { $permitidos += 'command(*)' }
@@ -2021,6 +2024,8 @@ Foticos Collection (la colección de fotografía de la empresa) tiene una API p�
 foto es una ruta relativa: antepón https://foticoscollection.com.
 run_command ya ejecuta PowerShell: escribe el comando tal cual, nunca dentro de powershell -Command. Ejemplo que funciona:
 $b='https://foticoscollection.com/api/v1'; $s=(Invoke-RestMethod "$b/stats").stats; $r=Invoke-RestMethod "$b/items?q=leica&per_page=3"; "Fichas: $($s.total_items)"; $r.data | Select-Object id, nombre, tipo | Format-Table -AutoSize | Out-String -Width 200
+Para una marca, búscala y cuenta sus fichas en el mismo comando:
+$b='https://foticoscollection.com/api/v1'; $m=(Invoke-RestMethod "$b/brands").data | Where-Object name -match 'kodak'; $m | ForEach-Object { $t=(Invoke-RestMethod "$b/items?brand_id=$($_.id)&per_page=3"); "$($_.name) (id $($_.id)): $($t.meta.total) fichas"; $t.data | Select-Object id, nombre | Format-Table -AutoSize | Out-String -Width 200 }
 '@
 
 function Read-Evento([string]$linea) {
