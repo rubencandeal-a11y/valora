@@ -125,6 +125,8 @@ $script:respuesta = $null
 $script:pensando = $true
 $script:convTrabajo = $null       # conversación a la que pertenece la respuesta en curso
 $script:sesion = $null            # agy abierto y esperando preguntas (ver Start-SesionAgy)
+$script:sesiones = New-Object System.Collections.ArrayList   # las dos últimas abiertas, la más reciente al final
+$script:colaPreguntas = New-Object System.Collections.ArrayList   # lo escrito mientras Valora respondía
 $script:finTurno = $false         # agy ha mandado el «result» de la pregunta en curso
 $script:pasos = New-Object System.Collections.ArrayList   # lo que agy va haciendo en la pregunta en curso
 $script:inicioTurno = Get-Date
@@ -1437,6 +1439,7 @@ function Open-Conv([string]$id) {
         else { Add-MensajeAgyTexto (Format-TextoVisible $m.texto) }
     }
     if ($enCurso -and $script:filaTrabajo) { [void]$ui.Chat.Children.Add($script:filaTrabajo) }
+    foreach ($q in @($script:colaPreguntas | Where-Object { $_.convId -eq $id })) { Show-PreguntaEnCola $q }
     Update-BotonEnviar
     Update-Inicio
     Update-ListaConv
@@ -1444,6 +1447,7 @@ function Open-Conv([string]$id) {
     $ui.Scroll.ScrollToEnd()
     Set-Estado 'Conversación abierta. Puedes seguir donde la dejaste.'
     Start-SesionAgy
+    Send-SiguienteEnCola
     $ui.Prompt.Focus() | Out-Null
 }
 
@@ -1569,7 +1573,7 @@ function Set-Ocupado([bool]$ocupado) { Update-BotonEnviar; Update-ListaConv }
 # está contestando.
 function Update-BotonEnviar {
     $aqui = $script:proc -and (-not $script:convTrabajo -or ($script:conv -and $script:conv.id -eq $script:convTrabajo.id))
-    if ($aqui) {
+    if ($aqui -and -not $ui.Prompt.Text.Trim()) {
         $ui.IcoEnviar.Text = [string][char]0xE71A
         $ui.BtnEnviar.ToolTip = 'Parar'
     } else {
@@ -1627,7 +1631,8 @@ function Close-Sesion {
         'Cerrar sesión', 'YesNo', 'Question')
     if ($r -ne 'Yes') { return }
     if ($script:proc -and -not $script:proc.HasExited) { try { $script:proc.Kill() } catch {} }
-    Stop-SesionAgy
+    Stop-SesionAgy -Todas
+    [void](Clear-ColaPreguntas)
     & cmdkey.exe /delete:gemini:antigravity | Out-Null
     New-ConvVacia
     Update-Cuenta $false
@@ -1962,13 +1967,22 @@ function Get-ClaveSesion {
     return $id + '|' + $script:workspace + '|' + (@($script:carpetas) -join '|')
 }
 
-function Stop-SesionAgy {
-    $s = $script:sesion
-    $script:sesion = $null
+function Close-ProcesoAgy($s) {
     if ($s -and $s.proc -and -not $s.proc.HasExited) {
         try { $s.proc.StandardInput.Close() } catch {}
         try { $s.proc.Kill() } catch {}
     }
+}
+
+# Cierra la sesión en uso, o todas (al cerrar Valora o la sesión de Google).
+function Stop-SesionAgy([switch]$Todas) {
+    $lista = if ($Todas) { @($script:sesiones) } else { @($script:sesion) }
+    foreach ($s in $lista) {
+        if (-not $s) { continue }
+        Close-ProcesoAgy $s
+        [void]$script:sesiones.Remove($s)
+    }
+    $script:sesion = $null
 }
 
 function Start-SesionAgy {
@@ -1978,7 +1992,17 @@ function Start-SesionAgy {
     if (-not $script:Agy) { return }
     $clave = Get-ClaveSesion
     if ($script:sesion -and -not $script:sesion.proc.HasExited -and $script:sesion.clave -eq $clave) { return }
-    Stop-SesionAgy
+    # La sesión que se deja guarda sus lecturas pendientes: sigue abierta por si se vuelve a ella.
+    if ($script:sesion) { $script:sesion.outTask = $script:outTask; $script:sesion.errTask = $script:errTask }
+    foreach ($s in @($script:sesiones)) { if ($s.proc.HasExited) { [void]$script:sesiones.Remove($s) } }
+    $abierta = @($script:sesiones) | Where-Object { $_.clave -eq $clave } | Select-Object -First 1
+    if ($abierta) {
+        [void]$script:sesiones.Remove($abierta); [void]$script:sesiones.Add($abierta)
+        $script:sesion = $abierta
+        $script:outTask = $abierta.outTask
+        $script:errTask = $abierta.errTask
+        return
+    }
     $ws = $script:workspace
     if (-not (Test-Path $ws)) { New-Item -ItemType Directory -Force $ws | Out-Null }
     $argumentos = @('--input-format', 'stream-json', '--output-format', 'stream-json', '--dangerously-skip-permissions', '-p=""')
@@ -1999,9 +2023,16 @@ function Start-SesionAgy {
     $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
     try { $proc = [System.Diagnostics.Process]::Start($psi) } catch { return }
     $agyId = if ($script:conv -and $script:conv.agyId) { [string]$script:conv.agyId } else { '' }
-    $script:sesion = [pscustomobject]@{ proc = $proc; clave = $clave; agyId = $agyId }
+    $script:sesion = [pscustomobject]@{ proc = $proc; clave = $clave; agyId = $agyId; outTask = $null; errTask = $null }
     $script:outTask = $proc.StandardOutput.ReadLineAsync()
     $script:errTask = $proc.StandardError.ReadLineAsync()
+    [void]$script:sesiones.Add($script:sesion)
+    # Como mucho dos abiertas: la de la conversación actual y la anterior.
+    while ($script:sesiones.Count -gt 2) {
+        $vieja = $script:sesiones[0]
+        Close-ProcesoAgy $vieja
+        $script:sesiones.RemoveAt(0)
+    }
 }
 
 function Send-PreguntaSesion([string]$mensaje) {
@@ -2125,11 +2156,57 @@ $timer.Add_Tick({
             Update-BotonEnviar
         }
         $ui.Prompt.Focus() | Out-Null
+        Send-SiguienteEnCola
     }
 })
 
-function Enviar([string]$instrucciones = '') {
-    if ($script:proc) {
+# Lo que se escribe mientras Valora responde en esa misma conversación no se pierde ni hay que
+# esperar: queda en cola, se ve en el chat más claro, y se envía solo al acabar la respuesta.
+function Show-PreguntaEnCola($item) {
+    Add-MensajeUsuario $item.texto @($item.archivos)
+    $fila = $ui.Chat.Children[$ui.Chat.Children.Count - 1]
+    $fila.Opacity = 0.55
+    $fila.ToolTip = 'En cola: se enviará en cuanto Valora termine la respuesta'
+    $item | Add-Member -NotePropertyName fila -NotePropertyValue $fila -Force
+}
+
+function Add-PreguntaEnCola([string]$texto, [string]$instrucciones) {
+    $item = [pscustomobject]@{ texto = $texto; instrucciones = $instrucciones; archivos = @($script:archivos); convId = $script:conv.id; fila = $null }
+    [void]$script:colaPreguntas.Add($item)
+    Show-PreguntaEnCola $item
+    $ui.Prompt.Clear()
+    $script:archivos.Clear(); Update-Adjuntos
+    $ui.Scroll.ScrollToEnd()
+    Update-BotonEnviar
+    $n = $script:colaPreguntas.Count
+    Set-Estado ("En cola: se enviará en cuanto Valora termine la respuesta" + $(if ($n -gt 1) { " ($n en cola)." } else { '.' })) '#F2C46D'
+}
+
+function Clear-ColaPreguntas {
+    $n = $script:colaPreguntas.Count
+    foreach ($item in @($script:colaPreguntas)) {
+        if ($item.fila -and $ui.Chat.Children.Contains($item.fila)) { $ui.Chat.Children.Remove($item.fila) }
+    }
+    $script:colaPreguntas.Clear()
+    return $n
+}
+
+function Send-SiguienteEnCola {
+    if ($script:proc -or $script:colaPreguntas.Count -eq 0) { return }
+    $item = $script:colaPreguntas[0]
+    if (-not $script:conv -or $script:conv.id -ne $item.convId) {
+        Set-Estado "Hay $($script:colaPreguntas.Count) preguntas en cola en otra conversación: se enviarán al volver a ella." '#F2C46D'
+        return
+    }
+    $script:colaPreguntas.RemoveAt(0)
+    Enviar $item.instrucciones $item
+}
+
+function Enviar([string]$instrucciones = '', $pendiente = $null) {
+    if ($script:proc -and -not $pendiente) {
+        $mismo = $script:conv -and $script:convTrabajo -and $script:conv.id -eq $script:convTrabajo.id
+        $escrito = $ui.Prompt.Text.Trim()
+        if ($mismo -and $escrito) { Add-PreguntaEnCola $escrito $instrucciones; return }
         $t = if ($script:convTrabajo) { $script:convTrabajo.titulo } else { 'otra conversación' }
         Set-Estado "Espera: Valora está respondiendo en «$t». Solo puede contestar una cosa a la vez." '#F2C46D'
         return
@@ -2139,15 +2216,16 @@ function Enviar([string]$instrucciones = '') {
         [System.Windows.MessageBox]::Show('No encuentro agy. Ejecuta el instalador (InstalarValora.exe).', 'Valora') | Out-Null
         return
     }
-    $texto = $ui.Prompt.Text.Trim()
+    $texto = if ($pendiente) { $pendiente.texto } else { $ui.Prompt.Text.Trim() }
     if (-not $texto) { return }
+    $sueltos = if ($pendiente) { @($pendiente.archivos) } else { @($script:archivos) }
     $ws = $script:workspace
     New-Item -ItemType Directory -Force $ws | Out-Null
 
     # Los archivos sueltos se copian a <carpeta de trabajo>\entrada para que agy los vea.
     $entrada = Join-Path $ws 'entrada'
     $adjuntos = @()
-    foreach ($f in @($script:archivos)) {
+    foreach ($f in $sueltos) {
         if (-not (Test-Path $f)) { continue }
         $full = (Resolve-Path $f).Path
         if ($full.StartsWith($ws, [StringComparison]::OrdinalIgnoreCase)) {
@@ -2163,10 +2241,15 @@ function Enviar([string]$instrucciones = '') {
 
     $mensaje = $texto
     if ($instrucciones) { $mensaje = $instrucciones + "`n`n" + $texto }
-    if ($script:estilo.Trim()) {
-        $mensaje = "Cómo quiere el usuario que le respondas (síguelo siempre):`n" + $script:estilo.Trim() + "`n`n" + $mensaje
+    # El estilo y la guía de Foticos Collection son contexto, no la pregunta: si van pegados a ella
+    # sin marcar, agy a veces contesta «Entendido, tomo nota» en vez de responder.
+    $contexto = ''
+    if ($script:estilo.Trim()) { $contexto += "Cómo quiere el usuario que le respondas (síguelo siempre):`n" + $script:estilo.Trim() + "`n`n" }
+    if (-not $script:conv -or -not $script:conv.agyId) { $contexto += $GuiaFC + "`n" }
+    if ($contexto) {
+        $mensaje = "[Contexto. No lo comentes ni lo confirmes: síguelo y úsalo solo cuando haga falta.]`n" + $contexto +
+            "[Fin del contexto]`n`nPregunta del usuario:`n" + $mensaje
     }
-    if (-not $script:conv -or -not $script:conv.agyId) { $mensaje = $GuiaFC + "`n" + $mensaje }
     if ($adjuntos.Count -gt 0) {
         $mensaje += "`n`nArchivos adjuntos (ábrelos y míralos):`n" + (($adjuntos | ForEach-Object { "- $_" }) -join "`n")
     }
@@ -2200,10 +2283,16 @@ function Enviar([string]$instrucciones = '') {
         Save-Conv
     }
 
+    # Las preguntas que siguen en cola se quitan un momento para que la respuesta quede justo
+    # debajo de su pregunta, y se vuelven a poner al final.
+    $enCola = @($script:colaPreguntas | Where-Object { $_.convId -eq $script:conv.id -and $_.fila })
+    foreach ($q in $enCola) { if ($ui.Chat.Children.Contains($q.fila)) { $ui.Chat.Children.Remove($q.fila) } }
+    if ($pendiente -and $pendiente.fila -and $ui.Chat.Children.Contains($pendiente.fila)) { $ui.Chat.Children.Remove($pendiente.fila) }
     Add-MensajeUsuario $texto $adjuntos
     Add-MensajeAgy
     $script:convTrabajo = $script:conv
     $script:filaTrabajo = $ui.Chat.Children[$ui.Chat.Children.Count - 1]
+    foreach ($q in $enCola) { [void]$ui.Chat.Children.Add($q.fila) }
     $ui.Scroll.ScrollToEnd()
 
     Start-SesionAgy
@@ -2221,18 +2310,23 @@ function Enviar([string]$instrucciones = '') {
         # agy se ha cerrado mientras esperaba: el timer lo verá cerrado y terminará el turno.
     }
 
-    $ui.Prompt.Clear()
-    $script:archivos.Clear(); Update-Adjuntos
+    # Si la pregunta salía de la cola, lo que se esté escribiendo ahora no se toca.
+    if (-not $pendiente) {
+        $ui.Prompt.Clear()
+        $script:archivos.Clear(); Update-Adjuntos
+    }
     Set-Ocupado $true
-    Set-Estado 'Valora está trabajando…' '#E8A33D'
+    $quedan = $script:colaPreguntas.Count
+    Set-Estado ('Valora está trabajando…' + $(if ($quedan) { " ($quedan en cola)" } else { '' })) '#E8A33D'
     $timer.Start()
 }
 
 function Parar {
     if ($script:proc -and -not $script:proc.HasExited) {
         try { $script:proc.Kill() } catch {}
-        $script:sesion = $null
-        Set-Estado 'Parado.'
+        Stop-SesionAgy
+        $quitadas = Clear-ColaPreguntas
+        Set-Estado ('Parado.' + $(if ($quitadas) { " Se han quitado las $quitadas preguntas que había en cola." } else { '' }))
     }
 }
 
@@ -2253,6 +2347,7 @@ $ui.Prompt.Add_PreviewKeyDown({
 $ui.Prompt.Add_TextChanged({
     $script:ultimaEscritura = Get-Date
     $ui.Placeholder.Visibility = if ($ui.Prompt.Text.Length -eq 0) { 'Visible' } else { 'Collapsed' }
+    Update-BotonEnviar
 })
 
 foreach ($chip in $ui.Sugerencias.Children) {
@@ -3485,7 +3580,7 @@ $timerAplicar = New-Object System.Windows.Threading.DispatcherTimer
 $timerAplicar.Interval = [TimeSpan]::FromSeconds(2)
 $timerAplicar.Add_Tick({
     if (-not $script:pendienteReinicio) { $timerAplicar.Stop(); return }
-    if ($script:proc -or $script:loginProc -or $ui.Login.Visibility -eq 'Visible' -or
+    if ($script:proc -or $script:colaPreguntas.Count -gt 0 -or $script:loginProc -or $ui.Login.Visibility -eq 'Visible' -or
         $ui.PanelConfirmar.Visibility -eq 'Visible' -or $ui.PanelFC.Visibility -eq 'Visible' -or $ui.PanelEstilo.Visibility -eq 'Visible' -or
         $script:ytSel.Count -gt 0 -or ($ui.YTAviso.Visibility -eq 'Visible' -and $ui.YTCodigoCaja.Visibility -eq 'Visible') -or $ui.YTClave.Password -or $ui.YTCred.Visibility -eq 'Visible' -or
         ((Get-Date) - $script:ultimaEscritura).TotalSeconds -lt 15) { return }
@@ -3580,7 +3675,7 @@ $win.Add_PreviewDrop({
 $win.Add_Closing({
     Save-Config
     if ($script:proc -and -not $script:proc.HasExited) { try { $script:proc.Kill() } catch {} }
-    Stop-SesionAgy
+    Stop-SesionAgy -Todas
     if ($script:loginProc) { try { $script:loginProc.Matar(); $script:loginProc.Cerrar() } catch {} }
 })
 
