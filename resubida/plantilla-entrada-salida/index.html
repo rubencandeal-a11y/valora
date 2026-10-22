@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Maravillado estoy de ti - {{FECHA}}</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/water.js"></script>
+    <style>
+      :root {
+        --water-top: #2d63a6;
+        --water-mid: #1f4d8c;
+        --water-deep: #0f2c5a;
+        --terracotta: #d0784f;
+        --cream: #f3e6cf;
+        --ink: #ffffff;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--water-deep);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: Montserrat, sans-serif;
+        color: var(--ink);
+      }
+
+      /* Shared water backdrop used by intro and outro scenes. */
+      .water {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(120% 38% at 50% -6%, rgba(138, 75, 58, 0.85) 0%, rgba(138, 75, 58, 0.35) 45%, rgba(138, 75, 58, 0) 75%),
+          radial-gradient(90% 45% at 50% 55%, rgba(78, 140, 210, 0.45) 0%, rgba(78, 140, 210, 0) 70%),
+          linear-gradient(180deg, #3b5f93 0%, var(--water-top) 28%, var(--water-mid) 62%, var(--water-deep) 100%);
+      }
+      .ripples {
+        position: absolute;
+        left: -160px;
+        top: 0;
+        width: 1400px;
+        height: 1920px;
+      }
+      .rings {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1080px;
+        height: 1920px;
+      }
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(85% 60% at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(5, 18, 40, 0.55) 100%);
+      }
+      .stack {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0 90px;
+        text-align: center;
+      }
+      .rule {
+        display: block;
+        width: 180px;
+        height: 4px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, rgba(208, 120, 79, 0), var(--terracotta) 20%, var(--terracotta) 80%, rgba(208, 120, 79, 0));
+        margin: 44px 0;
+      }
+      .word {
+        display: inline-block;
+        white-space: pre;
+      }
+      .ring {
+        position: absolute;
+        left: 50%;
+        top: 44%;
+        width: 2400px;
+        height: 2400px;
+        margin-left: -1200px;
+        margin-top: -1200px;
+        border-radius: 50%;
+        border: 6px solid rgba(255, 255, 255, 0.7);
+        box-shadow: 0 0 40px rgba(180, 215, 255, 0.5), inset 0 0 40px rgba(180, 215, 255, 0.35);
+      }
+
+      /* Clip, revealed through an expanding ripple. */
+      #clip-wrap {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        clip-path: circle(0px at 50% 44%);
+      }
+      #clip-inner {
+        position: absolute;
+        inset: 0;
+      }
+      #clip {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: {{AJUSTE}};
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="{{TOTAL}}" data-width="1080" data-height="1920">
+      <!-- Intro: 0 - 3.4 -->
+      <div
+        id="intro"
+        data-composition-id="intro"
+        data-composition-src="compositions/intro.html"
+        data-start="0"
+        data-duration="3.4"
+        data-track-index="0"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+
+      <!-- Clip: 2.6 - 23.66, audio fades in over 0.6 s and out over the last 1.46 s -->
+      <div id="clip-wrap">
+        <div id="clip-inner">
+          <video
+            id="clip"
+            class="clip"
+            src="assets/clip.mp4"
+            playsinline
+            data-has-audio="true"
+            data-start="2.6"
+            data-duration="{{CLIP}}"
+            data-track-index="1"
+            data-volume="1"
+            data-automation='{"version":1,"lanes":[{"target":"volume","points":[{"t":0,"v":0},{"t":0.6,"v":1},{"t":{{BAJADA}},"v":1},{"t":{{CLIP}},"v":0}]}]}'
+          ></video>
+        </div>
+      </div>
+      <div class="ring" id="ring-in"></div>
+
+      <!-- Outro: 22.9 - 27.9 (opens over the last 0.76 s of the clip) -->
+      <div
+        id="outro"
+        data-composition-id="outro"
+        data-composition-src="compositions/outro.html"
+        data-start="{{SALIDA}}"
+        data-duration="5"
+        data-track-index="2"
+        data-width="1080"
+        data-height="1920"
+      ></div>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Intro -> clip: the clip opens through a widening ripple from the title's centre.
+      tl.fromTo("#clip-wrap", { clipPath: "circle(0px at 50% 44%)" }, { clipPath: "circle(1250px at 50% 44%)", duration: 0.85, ease: "power2.inOut" }, 2.6);
+      tl.fromTo("#clip-inner", { scale: 1.12 }, { scale: 1, duration: 1.4, ease: "power3.out" }, 2.6);
+      tl.fromTo("#ring-in", { scale: 0, opacity: 0.9 }, { scale: 1.05, duration: 0.85, ease: "power2.inOut" }, 2.6);
+      tl.to("#ring-in", { opacity: 0, duration: 0.4, ease: "power1.in" }, 3.05);
+
+      // Clip -> outro: the clip softens and pushes in while the outro opens over it.
+      tl.fromTo("#clip-inner", { filter: "blur(0px)" }, { scale: 1.06, filter: "blur(6px)", duration: 0.8, ease: "power2.in" }, {{SALIDA}});
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

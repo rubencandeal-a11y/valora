@@ -113,7 +113,7 @@ namespace ValoraInstalador
             chkAbrir.Checked = true;
             chkLogin.Text = "Abrir también la terminal de agy (opcional, para usuarios avanzados)";
             chkLogin.Checked = false;
-            chkNode.Text = "Instalar también Node.js LTS (agy no lo necesita; útil para proyectos)";
+            chkNode.Text = "Instalar también lo que falte para resubir a YouTube (Node.js, Python y ffmpeg)";
             chkNode.Checked = true;
             AcceptButton = btnSiguiente;
 
@@ -362,6 +362,29 @@ namespace ValoraInstalador
                 }
             }
 
+            // 1c. Python y ffmpeg, para la resubida de YouTube (solo si faltan)
+            if (instalarNode)
+            {
+                string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                bool hayPython = BuscarEnPath("python.exe") != null && !BuscarEnPath("python.exe").Contains("WindowsApps")
+                    || Directory.Exists(Path.Combine(local, @"Programs\Python"));
+                if (hayPython) Log("[OK] Python ya está instalado.");
+                else
+                {
+                    Log("Instalando Python con winget...");
+                    int codigo = Ejecutar("winget", "install --id Python.Python.3.12 -e --scope user --accept-source-agreements --accept-package-agreements --disable-interactivity");
+                    Log(codigo == 0 ? "[OK] Python instalado." : "[AVISO] Python no se instaló (código " + codigo + "). Valora lo volverá a intentar al usar la resubida.");
+                }
+                if (BuscarEnPath("ffmpeg.exe") != null || File.Exists(Path.Combine(local, @"Microsoft\WinGet\Links\ffmpeg.exe")))
+                    Log("[OK] ffmpeg ya está instalado.");
+                else
+                {
+                    Log("Instalando ffmpeg con winget...");
+                    int codigo = Ejecutar("winget", "install --id Gyan.FFmpeg -e --scope user --accept-source-agreements --accept-package-agreements --disable-interactivity");
+                    Log(codigo == 0 ? "[OK] ffmpeg instalado." : "[AVISO] ffmpeg no se instaló (código " + codigo + "). Valora lo volverá a intentar al usar la resubida.");
+                }
+            }
+
             // 2. Ventana
             string destino = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Valora");
             Directory.CreateDirectory(destino);
@@ -373,8 +396,18 @@ namespace ValoraInstalador
 
             // 3. Carpeta de trabajo y configuración
             Directory.CreateDirectory(carpeta);
-            string json = "{ \"workspace\": \"" + carpeta.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\", \"auto\": true }";
-            File.WriteAllText(Path.Combine(destino, "config.json"), json, new UTF8Encoding(false));
+            // Si Valora ya estaba instalada, su configuración (logins, claves, estilo, YouTube...)
+            // se conserva tal cual: solo se crea si no existe.
+            string rutaConfig = Path.Combine(destino, "config.json");
+            if (File.Exists(rutaConfig))
+            {
+                Log("[OK] Se conserva la configuración que ya tenía Valora.");
+            }
+            else
+            {
+                string json = "{ \"workspace\": \"" + carpeta.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\", \"auto\": true }";
+                File.WriteAllText(rutaConfig, json, new UTF8Encoding(false));
+            }
             Log("[OK] Carpeta de trabajo: " + carpeta);
 
             // 4. Accesos directos

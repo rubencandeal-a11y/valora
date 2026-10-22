@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resubir vídeos</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Resubir vídeos · Maravillado estoy de ti</h1>
+    <span class="suave" id="resumen">Cargando…</span>
+  </div>
+  <div class="estado">
+    <span id="chip-youtube" class="chip">YouTube…</span>
+    <button id="btn-conectar" hidden>Conectar YouTube</button>
+    <span id="chip-trabajo" class="chip" hidden></span>
+    <button id="btn-actualizar" title="Vuelve a leer la lista de vídeos del canal">Actualizar listado</button>
+    <span class="suave">{{ usuario }}</span>
+    <a href="{{ url_for('salir') }}">Salir</a>
+  </div>
+</header>
+
+<div id="aviso-conexion" class="tarjeta aviso-conexion" hidden></div>
+
+<main>
+  <section>
+    <div class="filtros">
+      <input type="search" id="f-texto" placeholder="Buscar por título o fecha">
+      <select id="f-playlist"><option value="">Todas las playlists</option></select>
+      <select id="f-tipo">
+        <option value="">Vídeos y shorts</option>
+        <option value="Vídeo">Solo vídeos</option>
+        <option value="Short">Solo shorts</option>
+      </select>
+      <select id="f-estado">
+        <option value="">Cualquier estado</option>
+        <option value="no">Sin resubir</option>
+        <option value="si">Ya resubidos</option>
+        <option value="cola">En la cola</option>
+      </select>
+    </div>
+
+    <div class="acciones">
+      <span class="cuenta" id="cuenta-sel">0 seleccionados</span>
+      <button id="btn-todos">Seleccionar los filtrados</button>
+      <button id="btn-ninguno">Quitar selección</button>
+      <select id="privacidad" title="Cómo quedan los vídeos nuevos">
+        <option value="private">Privados</option>
+        <option value="unlisted">Ocultos</option>
+        <option value="public">Públicos</option>
+      </select>
+      <label title="Antes de subirlo, cada vídeo se rehace con la entrada (fecha) y la salida (versículo y canal) animadas"><input type="checkbox" id="entrada-salida" checked> Con entrada y salida</label>
+      <button class="principal" id="btn-resubir" disabled>Resubir seleccionados</button>
+    </div>
+
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="chk-pagina" title="Marcar esta página"></th>
+          <th>Subido</th>
+          <th>Título</th>
+          <th class="ocultable">Playlist</th>
+          <th class="ocultable">Tipo</th>
+          <th class="ocultable">Vistas</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="filas"></tbody>
+    </table>
+    <div class="mas"><button id="btn-mas" hidden>Ver más</button></div>
+  </section>
+
+  <aside>
+    <div class="tarjeta">
+      <h2>Cola de resubida</h2>
+      <p class="suave" id="cola-resumen">Vacía.</p>
+      <ul class="cola" id="cola"></ul>
+    </div>
+  </aside>
+</main>
+
+<script>
+const CSRF = {{ csrf|tojson }};
+const POR_PAGINA = 200;
+let videos = [], filtrados = [], mostrados = POR_PAGINA;
+const seleccion = new Set();
+const $ = id => document.getElementById(id);
+
+async function api(ruta, datos) {
+  const opciones = datos === undefined ? {} : {
+    method: "POST", headers: {"Content-Type": "application/json", "X-CSRF": CSRF},
+    body: JSON.stringify(datos),
+  };
+  const r = await fetch(ruta, opciones);
+  if (r.status === 401) { location.href = "/login"; return null; }
+  if (!r.ok) throw new Error(`Error ${r.status}`);
+  return r.json();
+}
+
+function celda(fila, texto, clase) {
+  const td = document.createElement("td");
+  if (clase) td.className = clase;
+  if (texto instanceof Node) td.append(texto); else td.textContent = texto ?? "";
+  fila.append(td);
+  return td;
+}
+
+function enlace(url, texto) {
+  const a = document.createElement("a");
+  a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = texto;
+  return a;
+}
+
+function textoEstado(v) {
+  if (v.resubido) return enlace(`https://www.youtube.com/watch?v=${v.resubido}`, "Resubido");
+  if (v.cola) return `En cola: ${v.cola}`;
+  return v.descargado ? "Descargado" : "";
+}
+
+function filtrar() {
+  const texto = $("f-texto").value.trim().toLowerCase();
+  const playlist = $("f-playlist").value, tipo = $("f-tipo").value, est = $("f-estado").value;
+  filtrados = videos.filter(v =>
+    (!texto || v.titulo.toLowerCase().includes(texto) || v.fecha.includes(texto)) &&
+    (!playlist || (playlist === "-" ? v.playlists.length === 0 : v.playlists.includes(playlist))) &&
+    (!tipo || v.tipo === tipo) &&
+    (!est || (est === "si" && v.resubido) || (est === "no" && !v.resubido) || (est === "cola" && v.cola))
+  );
+  mostrados = POR_PAGINA;
+  pintar();
+}
+
+function seleccionable(v) { return !v.resubido && !(v.cola && v.cola !== "error"); }
+
+function pintar() {
+  const cuerpo = $("filas");
+  cuerpo.replaceChildren();
+  for (const v of filtrados.slice(0, mostrados)) {
+    const fila = document.createElement("tr");
+    const chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.checked = seleccion.has(v.id);
+    chk.disabled = !seleccionable(v);
+    chk.onchange = () => { chk.checked ? seleccion.add(v.id) : seleccion.delete(v.id); fila.classList.toggle("sel", chk.checked); contar(); };
+    fila.classList.toggle("sel", chk.checked);
+    celda(fila, chk);
+    celda(fila, v.fecha || "—", "ancho");
+    celda(fila, enlace(v.url, v.titulo));
+    celda(fila, v.playlists.join(", ") || "Sin playlist", "ocultable");
+    celda(fila, v.tipo, "ocultable");
+    celda(fila, v.vistas.toLocaleString("es"), "num ocultable");
+    celda(fila, textoEstado(v));
+    cuerpo.append(fila);
+  }
+  $("btn-mas").hidden = filtrados.length <= mostrados;
+  $("btn-mas").textContent = `Ver más (${filtrados.length - mostrados} restantes)`;
+  contar();
+}
+
+function contar() {
+  $("cuenta-sel").textContent = `${seleccion.size} seleccionados · ${filtrados.length} en el filtro`;
+  $("btn-resubir").disabled = seleccion.size === 0;
+}
+
+async function cargarVideos() {
+  const datos = await api("/api/videos");
+  if (!datos) return;
+  videos = datos.videos;
+  const sel = $("f-playlist"), actual = sel.value;
+  sel.replaceChildren(new Option("Todas las playlists", ""), new Option("Sin playlist", "-"),
+                      ...datos.playlists.map(p => new Option(p, p)));
+  sel.value = actual;
+  const resubidos = videos.filter(v => v.resubido).length;
+  $("resumen").textContent = `${videos.length} vídeos · ${resubidos} resubidos · listado del ${datos.generado || "?"}`;
+  filtrar();
+}
+
+async function cargarEstado() {
+  const e = await api("/api/estado");
+  if (!e) return;
+  const chip = $("chip-youtube");
+  chip.textContent = e.youtube_conectado ? `Sube al canal: ${e.canal || "conectado"}` : (e.conectando ? "Esperando login de Google…" : "YouTube sin conectar");
+  chip.className = "chip " + (e.youtube_conectado ? "ok" : (e.conectando ? "aviso" : "mal"));
+  $("btn-conectar").hidden = e.conectando;
+  $("btn-conectar").textContent = e.youtube_conectado ? "Cambiar cuenta" : "Conectar YouTube";
+  pintarAviso(e);
+
+  const trabajo = $("chip-trabajo");
+  trabajo.hidden = !(e.pausa_hasta || e.trabajando);
+  if (e.pausa_hasta) { trabajo.textContent = `En pausa hasta las ${e.pausa_hasta}: ${e.motivo_pausa}`; trabajo.className = "chip aviso"; }
+  else if (e.trabajando) { trabajo.textContent = `Trabajando en ${e.trabajando}`; trabajo.className = "chip ok"; }
+  $("btn-actualizar").disabled = e.actualizando;
+  $("btn-actualizar").textContent = e.actualizando ? "Actualizando…" : "Actualizar listado";
+
+  const partes = Object.entries(e.cuenta).map(([k, n]) => `${n} ${k}`);
+  $("cola-resumen").textContent = partes.length ? partes.join(" · ") : "Vacía.";
+  const lista = $("cola");
+  lista.replaceChildren();
+  for (const item of [...e.cola].reverse()) {
+    const li = document.createElement("li");
+    const izq = document.createElement("div");
+    izq.append(item.titulo);
+    if (item.error) { const d = document.createElement("div"); d.className = "err"; d.textContent = item.error; izq.append(d); }
+    const der = document.createElement("div");
+    if (item.estado === "hecho" && item.nuevo) der.append(enlace(`https://www.youtube.com/watch?v=${item.nuevo}`, "hecho"));
+    else der.append(item.estado);
+    if (item.estado === "pendiente" || item.estado === "error") {
+      const b = document.createElement("button");
+      b.textContent = "Quitar";
+      b.onclick = async () => { await api("/api/cola/quitar", {ids: [item.id]}); cargarEstado(); cargarVideos(); };
+      der.append(" ", b);
+    }
+    li.append(izq, der);
+    lista.append(li);
+  }
+}
+
+$("f-texto").oninput = filtrar;
+for (const id of ["f-playlist", "f-tipo", "f-estado"]) $(id).onchange = filtrar;
+$("btn-mas").onclick = () => { mostrados += POR_PAGINA; pintar(); };
+$("btn-todos").onclick = () => { filtrados.filter(seleccionable).forEach(v => seleccion.add(v.id)); pintar(); };
+$("btn-ninguno").onclick = () => { seleccion.clear(); pintar(); };
+$("chk-pagina").onchange = e => {
+  filtrados.slice(0, mostrados).filter(seleccionable).forEach(v => e.target.checked ? seleccion.add(v.id) : seleccion.delete(v.id));
+  pintar();
+};
+$("btn-resubir").onclick = async () => {
+  const privacidad = $("privacidad").value;
+  const nombre = $("privacidad").selectedOptions[0].textContent.toLowerCase();
+  const canal = $("chip-youtube").textContent.replace("Sube al canal: ", "");
+  const entrada_salida = $("entrada-salida").checked;
+  const con = entrada_salida ? ", con entrada y salida," : "";
+  if (!confirm(`Se van a volver a subir ${seleccion.size} vídeos${con} al canal "${canal}" como ${nombre}. ¿Seguir?`)) return;
+  const r = await api("/api/cola", {ids: [...seleccion], privacidad, entrada_salida});
+  seleccion.clear();
+  alert(`${r.añadidos} vídeos añadidos a la cola.`);
+  cargarVideos(); cargarEstado();
+};
+$("btn-actualizar").onclick = async () => { await api("/api/actualizar", {}); cargarEstado(); };
+function pintarAviso(e) {
+  const caja = $("aviso-conexion");
+  caja.replaceChildren();
+  if (e.codigo) {
+    const p1 = document.createElement("p");
+    p1.append("1. Abre ", enlace(e.url_verificacion, e.url_verificacion), " (en el móvil o en otra pestaña).");
+    const p2 = document.createElement("p");
+    p2.append("2. Escribe este código: ");
+    const codigo = document.createElement("strong");
+    codigo.className = "codigo";
+    codigo.textContent = e.codigo;
+    p2.append(codigo);
+    const p3 = document.createElement("p");
+    p3.textContent = "3. Entra con la cuenta de Google dueña del canal y acepta. Esta página se actualiza sola.";
+    caja.append(p1, p2, p3);
+    caja.hidden = false;
+  } else if (e.error_conexion && !e.youtube_conectado) {
+    const p = document.createElement("p");
+    p.className = "error";
+    p.textContent = `No se ha podido conectar con YouTube: ${e.error_conexion}`;
+    caja.append(p);
+    caja.hidden = false;
+  } else {
+    caja.hidden = true;
+  }
+}
+
+$("btn-conectar").onclick = async () => {
+  $("btn-conectar").disabled = true;
+  try { await api("/api/conectar", {}); } finally { $("btn-conectar").disabled = false; }
+  cargarEstado();
+};
+
+cargarVideos();
+cargarEstado();
+setInterval(cargarEstado, 5000);
+setInterval(cargarVideos, 60000);
+</script>
+</body>
+</html>

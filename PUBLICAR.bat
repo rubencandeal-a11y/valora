@@ -8,6 +8,7 @@ set "MSG=%~1"
 if "%MSG%"=="" set "MSG=Actualización de Valora"
 
 call "%~dp0COMPILAR.bat" || exit /b 1
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0copiar-resubida.ps1" || exit /b 1
 
 git add -A || exit /b 1
 git diff --cached --quiet && (

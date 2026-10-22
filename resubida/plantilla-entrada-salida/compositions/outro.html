@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "Fraunces";
+          src: url("../assets/fonts/Fraunces.ttf") format("truetype");
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: "Fraunces";
+          src: url("../assets/fonts/Fraunces-Italic.ttf") format("truetype");
+          font-weight: 100 900;
+          font-style: italic;
+        }
+        #outro-root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        #outro-panel {
+          position: absolute;
+          inset: 0;
+          clip-path: circle(0px at 50% 44%);
+        }
+        #outro-content {
+          padding-bottom: 160px;
+        }
+        #outro-quote {
+          display: block;
+          font-family: "Fraunces", serif;
+          font-style: normal;
+          font-weight: 300;
+          font-size: 150px;
+          line-height: 0.6;
+          height: 80px;
+          color: var(--terracotta);
+        }
+        #outro-verse {
+          font-family: "Fraunces", serif;
+          font-style: italic;
+          font-weight: 400;
+          font-variation-settings: "SOFT" 100, "WONK" 0, "opsz" 144;
+          font-size: 112px;
+          line-height: 1.06;
+          letter-spacing: -0.02em;
+          color: var(--ink);
+          text-shadow: 0 6px 40px rgba(5, 20, 50, 0.45);
+        }
+        #outro-verse .line {
+          display: block;
+        }
+        #outro-ref {
+          font-family: Montserrat, sans-serif;
+          font-weight: 700;
+          font-size: 32px;
+          letter-spacing: 0.28em;
+          padding-left: 0.28em;
+          text-transform: uppercase;
+          color: var(--cream);
+        }
+        #outro-handle {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-top: 120px;
+        }
+        #outro-channel {
+          font-family: "Fraunces", serif;
+          font-style: italic;
+          font-weight: 400;
+          font-size: 38px;
+          color: var(--cream);
+          margin-bottom: 14px;
+        }
+        #outro-at {
+          font-family: Montserrat, sans-serif;
+          font-weight: 700;
+          font-size: 46px;
+          color: var(--ink);
+        }
+        #outro-sub {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-top: 34px;
+          padding: 18px 40px 18px 34px;
+          border: 2px solid rgba(255, 255, 255, 0.75);
+          border-radius: 999px;
+          overflow: hidden;
+          font-family: Montserrat, sans-serif;
+          font-weight: 700;
+          font-size: 28px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--ink);
+          background: rgba(10, 30, 60, 0.25);
+        }
+        #outro-dot {
+          display: block;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: var(--terracotta);
+        }
+        #outro-sheen {
+          position: absolute;
+          top: -20px;
+          bottom: -20px;
+          left: 0;
+          width: 90px;
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0));
+        }
+      </style>
+
+      <div id="outro-root" data-composition-id="outro" data-width="1080" data-height="1920">
+        <div id="outro-panel">
+          <div class="water"></div>
+          <svg data-layout-allow-overflow class="ripples" id="outro-ripples" viewBox="0 0 1400 1920"></svg>
+          <svg data-layout-allow-overflow class="rings" id="outro-rings" viewBox="0 0 1080 1920"></svg>
+          <div class="vignette"></div>
+          <div class="stack" id="outro-content">
+            <span id="outro-quote">&ldquo;</span>
+            <p id="outro-verse" style="font-size: {{TAMANO_VERSO}}px">{{VERSO}}</p>
+            <span class="rule" id="outro-rule"></span>
+            <div id="outro-ref">{{CITA}}</div>
+            <div id="outro-handle">
+              <div id="outro-channel">Maravillado estoy de ti</div>
+              <div id="outro-at">@maravilladoestoydeti</div>
+              <div id="outro-sub"><span id="outro-dot"></span>Suscríbete<span id="outro-sheen"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ring" id="ring-out"></div>
+      </div>
+
+      <script>
+        (function () {
+          const lines = window.Water.buildRipples(document.getElementById("outro-ripples"), 23);
+          const rings = window.Water.buildRings(document.getElementById("outro-rings"), 1330, 3);
+          const tl = gsap.timeline({ paused: true });
+
+          // Opening: the water panel spreads over the clip like a ripple.
+          tl.fromTo("#outro-panel", { clipPath: "circle(0px at 50% 44%)" }, { clipPath: "circle(1250px at 50% 44%)", duration: 0.85, ease: "power2.inOut" }, 0);
+          tl.fromTo("#ring-out", { scale: 0, opacity: 0.9 }, { scale: 1.05, duration: 0.85, ease: "power2.inOut" }, 0);
+          tl.to("#ring-out", { opacity: 0, duration: 0.4, ease: "power1.in" }, 0.45);
+
+          // Ambient water.
+          lines.forEach((l) => {
+            tl.fromTo(l.el, { x: 0 }, { x: l.dir * l.speed * 5, duration: 5, ease: "none" }, 0);
+          });
+          rings.forEach((r, k) => {
+            const t0 = 0.6 + k * 0.6;
+            tl.fromTo(r, { scale: 0.05 }, { scale: 1.7, duration: 2.8, ease: "power2.out" }, t0);
+            tl.fromTo(r, { opacity: 0 }, { opacity: 0.35, duration: 0.3, ease: "none" }, t0);
+            tl.to(r, { opacity: 0, duration: 2.0, ease: "power1.in" }, t0 + 0.5);
+          });
+
+          // Verse, reference, then the channel and a quiet subscribe pill.
+          tl.fromTo("#outro-quote", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.55);
+          tl.fromTo(
+            "#outro-verse .word",
+            { opacity: 0, y: 40, filter: "blur(12px)" },
+            { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.9, ease: "power3.out", stagger: 0.11 },
+            0.7,
+          );
+          tl.fromTo("#outro-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.8, ease: "power3.inOut" }, 1.65);
+          tl.fromTo("#outro-ref", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" }, 1.8);
+          tl.fromTo("#outro-channel", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 2.35);
+          tl.fromTo("#outro-at", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 2.5);
+          tl.fromTo("#outro-sub", { opacity: 0, y: 18, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 2.75);
+          tl.fromTo("#outro-sheen", { x: -120, skewX: -20 }, { x: 460, skewX: -20, duration: 1.0, ease: "power2.inOut" }, 3.6);
+
+          window.__timelines["outro"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

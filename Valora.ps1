@@ -59,7 +59,8 @@ function Load-Config {
 
 function Save-Config {
     @{ workspace = $script:workspace; auto = [bool]$ui.ChkAuto.IsChecked; carpetas = @($script:carpetas); fcEntorno = $script:fcEntorno; fcClaves = $script:fcClaves
-       ytUrl = $script:ytUrl; ytUsuario = $script:ytUsuario; ytToken = $script:ytToken; modo = $script:modo; estilo = $script:estilo; permisosAgy = $script:permisosAgy } |
+       ytUrl = $script:ytUrl; ytUsuario = $script:ytUsuario; ytToken = $script:ytToken; modo = $script:modo; estilo = $script:estilo; permisosAgy = $script:permisosAgy
+       ytServidorLocal = [bool]$script:ytServidorLocal; ytClaveLocal = $script:ytClaveLocal } |
         ConvertTo-Json | Set-Content $ConfigFile -Encoding UTF8
     [void](Set-PermisosAgy)
 }
@@ -107,6 +108,8 @@ $script:fcEntorno = $cfg.fcEntorno
 $script:fcClaves = $cfg.fcClaves      # entorno -> clave cifrada con DPAPI (solo la descifra este usuario de Windows)
 $script:fichaPendiente = $null        # ficha que abrirá la próxima conversación
 $script:ytUrl = $cfg.ytUrl            # web de resubida de YouTube (vacía: la de este PC)
+$script:ytServidorLocal = [bool]$cfg.ytServidorLocal   # este PC monta y sube él mismo (PC del jefe)
+$script:ytClaveLocal = $cfg.ytClaveLocal               # contraseña de Valora en su propia web (cifrada)
 $script:ytUsuario = $cfg.ytUsuario
 $script:ytToken = $cfg.ytToken        # token de esa web, cifrado con DPAPI como las claves de Foticos Collection
 $script:modo = 'valora'               # 'valora' o 'youtube'; se aplica al arrancar
@@ -2978,9 +2981,11 @@ $script:ytMensajeCredHasta = Get-Date
 # la local, y en los demás la dirección pública que la web deja en la rama «direccion» del
 # repo de Valora cada vez que arranca (con trycloudflare cambia en cada arranque).
 $script:ytUrlAuto = $null
-$script:ytEsServidor = Test-Path (Join-Path $env:USERPROFILE 'Documents\youtube\web.py')
+$script:ytEsServidor = $script:ytServidorLocal -or (Test-Path (Join-Path $env:USERPROFILE 'Documents\youtube\web.py'))
+$PuertoLocalYT = 8090
 
 function Get-UrlYT {
+    if ($script:ytServidorLocal) { return "http://127.0.0.1:$PuertoLocalYT" }
     if ($script:ytUrl -and $script:ytUrl -notmatch 'trycloudflare\.com') { return $script:ytUrl.TrimEnd('/') }
     if ($script:ytEsServidor) { return 'http://127.0.0.1:8080' }
     if ($script:ytUrlAuto) { return $script:ytUrlAuto }
@@ -3009,6 +3014,198 @@ function Update-UrlAutoYT {
     } })
     $timerHttp.Start()
 }
+
+# ---------- Resubida en este mismo PC (modo servidor, el PC del jefe) ----------
+# Valora deja este PC listo para montar y subir él solo: comprueba qué programas faltan y los
+# instala con winget (Python, ffmpeg, Node.js), baja de GitHub el programa de resubida y lo
+# mantiene al día (solo el código: la configuración, el permiso de YouTube, la cola, lo subido
+# y los vídeos se conservan), lo arranca en segundo plano y entra en él sola.
+$ResubidaDir = Join-Path $ConfigDir 'resubida'
+$script:srv = $null
+$script:srvUltimaRevision = [DateTime]::MinValue
+
+function Find-ProgramaYT([string]$nombre, [string[]]$rutas) {
+    $c = Get-Command $nombre -ErrorAction SilentlyContinue | Where-Object { $_.Source -notmatch 'WindowsApps' } | Select-Object -First 1
+    if ($c) { return $c.Source }
+    foreach ($r in $rutas) {
+        $f = Get-Item $r -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+        if ($f) { return $f.FullName }
+    }
+    return $null
+}
+
+function Get-ProgramasYT {
+    return [ordered]@{
+        python = Find-ProgramaYT 'python.exe' @("$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe", "$env:ProgramFiles\Python3*\python.exe")
+        ffmpeg = Find-ProgramaYT 'ffmpeg.exe' @("$env:LOCALAPPDATA\Microsoft\WinGet\Links\ffmpeg.exe", "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Gyan.FFmpeg*\*\bin\ffmpeg.exe")
+        node   = Find-ProgramaYT 'node.exe' @("$env:ProgramFiles\nodejs\node.exe", "$env:LOCALAPPDATA\Programs\nodejs\node.exe")
+    }
+}
+
+$WingetYT = @{ python = 'Python.Python.3.12'; ffmpeg = 'Gyan.FFmpeg'; node = 'OpenJS.NodeJS.LTS' }
+$NombreYT = @{ python = 'Python'; ffmpeg = 'ffmpeg'; node = 'Node.js' }
+
+function Start-ProcesoYT([string]$exe, [string]$argumentos, [string]$carpeta = $ResubidaDir, [hashtable]$entorno = @{}) {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo $exe, $argumentos
+    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.WorkingDirectory = $carpeta
+    foreach ($k in $entorno.Keys) { $psi.EnvironmentVariables[$k] = $entorno[$k] }
+    return [System.Diagnostics.Process]::Start($psi)
+}
+
+function Get-EntornoYT($prog) {
+    # Lo recién instalado no está en el PATH de este proceso: se añade a mano para la web.
+    $carpetas = @($prog.Values | Where-Object { $_ } | ForEach-Object { Split-Path $_ })
+    return @{ PATH = (($carpetas + $env:PATH) -join ';'); RESUBIDA_PUERTO = "$PuertoLocalYT"; PYTHONIOENCODING = 'utf-8' }
+}
+
+function Test-WebLocalYT {
+    try {
+        $c = New-Object Net.Sockets.TcpClient
+        $ok = $c.ConnectAsync('127.0.0.1', $PuertoLocalYT).Wait(300)
+        $c.Close(); return $ok
+    } catch { return $false }
+}
+
+# La web de este PC es la que escucha en su puerto.
+function Stop-WebLocalYT {
+    $conn = Get-NetTCPConnection -LocalPort $PuertoLocalYT -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($conn) { try { Stop-Process -Id $conn.OwningProcess -Force } catch {} }
+}
+
+function Set-EstadoSrvYT([string]$texto, [string]$color = '#F2C46D') {
+    Set-Estado $texto $color
+    if ($script:modo -eq 'youtube' -and $texto) { $ui.TxtYTResumen.Text = $texto }
+}
+
+# Máquina de pasos: cada tick mira si el paso en curso ha terminado y lanza el siguiente.
+# Con -SoloActualizar solo mira si hay código nuevo (y si lo hay, sigue hasta reiniciar la web).
+function Start-ServidorLocalYT([switch]$SoloActualizar) {
+    if (-not $script:ytServidorLocal -or $script:srv) { return }
+    $script:srvUltimaRevision = Get-Date
+    try {
+        $script:srv = @{ paso = 'sha'; soloActualizar = [bool]$SoloActualizar; tarea = (New-Cliente).DownloadStringTaskAsync("https://github.com/$RepoValora.git/info/refs?service=git-upload-pack") }
+    } catch { $script:srv = @{ paso = 'programas' } }
+    $timerSrv.Start()
+}
+
+$timerSrv = New-Object System.Windows.Threading.DispatcherTimer
+$timerSrv.Interval = [TimeSpan]::FromMilliseconds(700)
+$timerSrv.Add_Tick({
+    $s = $script:srv
+    if (-not $s) { $timerSrv.Stop(); return }
+    try {
+        switch ($s.paso) {
+            'sha' {
+                if (-not $s.tarea.IsCompleted) { return }
+                $sha = if (-not $s.tarea.IsFaulted -and $s.tarea.Result -match '([0-9a-f]{40}) refs/heads/main') { $Matches[1] } else { '' }
+                $v = Get-VersionLocal
+                if ($sha -and ($sha -ne $v.resubidaSha -or -not (Test-Path (Join-Path $ResubidaDir 'web.py')))) {
+                    Set-EstadoSrvYT 'Bajando el programa de resubida…'
+                    $zip = Join-Path $env:TEMP "valora-resubida-$sha.zip"
+                    $s.sha = $sha; $s.zip = $zip; $s.paso = 'zip'
+                    $s.tarea = (New-Cliente).DownloadFileTaskAsync("https://codeload.github.com/$RepoValora/zip/$sha", $zip)
+                } elseif ($s.soloActualizar -and (Test-WebLocalYT)) { $script:srv = $null }
+                else { $s.paso = 'programas' }
+            }
+            'zip' {
+                if (-not $s.tarea.IsCompleted) { return }
+                if ($s.tarea.IsFaulted) { throw "no se ha podido bajar el programa de resubida: $($s.tarea.Exception.GetBaseException().Message)" }
+                # Solo se escriben los ficheros que trae el programa; los datos de este PC no vienen en él.
+                Add-Type -AssemblyName System.IO.Compression.FileSystem
+                $z = [IO.Compression.ZipFile]::OpenRead($s.zip)
+                try {
+                    foreach ($e in $z.Entries) {
+                        if ($e.FullName -notmatch '^[^/]+/resubida/(.+)$' -or $e.FullName.EndsWith('/')) { continue }
+                        $destino = Join-Path $ResubidaDir ($Matches[1] -replace '/', '\')
+                        [void](New-Item -ItemType Directory -Force (Split-Path $destino))
+                        [IO.Compression.ZipFileExtensions]::ExtractToFile($e, $destino, $true)
+                    }
+                } finally { $z.Dispose(); Remove-Item $s.zip -Force -ErrorAction SilentlyContinue }
+                if (-not (Test-Path (Join-Path $ResubidaDir 'web.py'))) { throw 'el programa de resubida no viene en esta versión de Valora.' }
+                $v = Get-VersionLocal
+                $v | Add-Member -NotePropertyName resubidaSha -NotePropertyValue $s.sha -Force
+                Save-VersionLocal $v
+                Write-LogUpd "programa de resubida actualizado a $($s.sha)"
+                $s.reiniciar = $true
+                $s.paso = 'programas'
+            }
+            'programas' {
+                $prog = Get-ProgramasYT
+                $falta = @($prog.Keys | Where-Object { -not $prog[$_] })
+                if ($falta.Count) {
+                    $n = $falta[0]
+                    if ($s["intentado_$n"]) { throw "no se ha podido instalar $($NombreYT[$n]). Instálalo a mano y vuelve a abrir Valora." }
+                    $s["intentado_$n"] = $true
+                    Set-EstadoSrvYT "Instalando $($NombreYT[$n]), que falta en este PC (puede pedir permiso de administrador)…"
+                    $alcance = if ($n -eq 'node') { '' } else { ' --scope user' }
+                    $s.proc = Start-ProcesoYT 'winget' "install -e --id $($WingetYT[$n])$alcance --silent --accept-source-agreements --accept-package-agreements --disable-interactivity" $env:TEMP
+                    $s.paso = 'instalando'
+                    return
+                }
+                $s.prog = $prog
+                Set-EstadoSrvYT 'Comprobando las librerías de Python…'
+                $s.proc = Start-ProcesoYT $prog.python '-m pip install -q --disable-pip-version-check -r requirements.txt' $ResubidaDir (Get-EntornoYT $prog)
+                $s.paso = 'pip'
+            }
+            'instalando' { if ($s.proc.HasExited) { $s.paso = 'programas' } }
+            'pip' {
+                if (-not $s.proc.HasExited) { return }
+                if ($s.proc.ExitCode -ne 0) { throw 'no se han podido instalar las librerías de Python (pip).' }
+                # Usuario propio de Valora en su web: la contraseña la inventa y la guarda cifrada.
+                $clave = $null
+                if ($script:ytClaveLocal) {
+                    try { $clave = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $script:ytClaveLocal))) } catch {}
+                }
+                if (-not $clave) {
+                    $clave = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 24 | ForEach-Object { [char]$_ })
+                    $script:ytClaveLocal = ConvertTo-SecureString $clave -AsPlainText -Force | ConvertFrom-SecureString
+                    Save-Config
+                }
+                $s.clave = $clave
+                $s.proc = Start-ProcesoYT $s.prog.python "web.py usuario valora $clave" $ResubidaDir (Get-EntornoYT $s.prog)
+                $s.paso = 'usuario'
+            }
+            'usuario' {
+                if (-not $s.proc.HasExited) { return }
+                if ($s.reiniciar -and (Test-WebLocalYT)) {
+                    # Código nuevo: se reinicia la web, salvo que esté trabajando (se espera a que acabe).
+                    if ($script:ytEstado -and $script:ytEstado.trabajando) { return }
+                    Stop-WebLocalYT
+                    $s.reiniciar = $false
+                    return
+                }
+                if (-not (Test-WebLocalYT)) {
+                    Set-EstadoSrvYT 'Arrancando la resubida en este PC…'
+                    [void](Start-ProcesoYT $s.prog.python 'web.py' $ResubidaDir (Get-EntornoYT $s.prog))
+                }
+                $s.hasta = (Get-Date).AddSeconds(60)
+                $s.paso = 'esperar'
+            }
+            'esperar' {
+                if (-not (Test-WebLocalYT)) {
+                    if ((Get-Date) -gt $s.hasta) { throw 'la resubida no ha arrancado en 60 s.' }
+                    return
+                }
+                $clave = $s.clave
+                $script:srv = $null
+                Invoke-YT 'POST' '/api/entrar' @{ usuario = 'valora'; 'contraseña' = $clave } {
+                    param($res, $err)
+                    if ($err) { Set-EstadoSrvYT "No se ha podido entrar en la resubida de este PC: $err" '#F28B82'; return }
+                    Set-TokenYT $res.token
+                    $script:ytUsuario = 'valora'
+                    $ui.YTServidor.Visibility = 'Collapsed'
+                    Set-EstadoSrvYT 'Resubida lista en este PC.' '#81C995'
+                    $script:ytPidiendoEstado = $null; $script:ytCargando = $null
+                    Get-EstadoYT; Get-VideosYT
+                }
+            }
+        }
+    } catch {
+        $script:srv = $null
+        Write-LogUpd ('resubida local: ' + $_.Exception.Message)
+        Set-EstadoSrvYT ('Resubida: ' + $_.Exception.Message) '#F28B82'
+    }
+})
 
 function Get-TokenYT {
     if (-not $script:ytToken) { return $null }
@@ -3616,6 +3813,8 @@ $timerYT.Add_Tick({
     if (((Get-Date) - $script:ytUltimoListado).TotalSeconds -ge 60) {
         $script:ytUltimoListado = Get-Date
         Update-UrlAutoYT
+        if ($script:ytServidorLocal -and -not $script:srv -and
+            (((Get-Date) - $script:srvUltimaRevision).TotalMinutes -ge 10 -or -not (Test-WebLocalYT))) { Start-ServidorLocalYT -SoloActualizar }
         if ($script:ytSel.Count -eq 0) { Get-VideosYT }
     }
 })
@@ -4007,6 +4206,7 @@ if (Test-Path $ReanudarFile) {
     } catch {}
 }
 Update-UrlAutoYT
+Start-ServidorLocalYT
 if ($cfg.modo -eq 'youtube') { Set-Modo 'youtube' }
 $ui.TxtVersion.Text = 'Versión ' + $(if (-not $script:esInstalada) { 'de pruebas (no se actualiza)' } elseif ($verLocal) { $verLocal.Substring(0, 7) } else { 'local' })
 if ($script:relevo) { $ui.TxtVersion.Text += ' · recién actualizada ✓'; $ui.TxtVersion.Foreground = Brush '#81C995' }

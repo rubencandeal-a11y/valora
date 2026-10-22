@@ -1,0 +1,5 @@
+flask
+waitress
+google-api-python-client
+google-auth-oauthlib
+yt-dlp[default]

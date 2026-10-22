@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resubir vídeos · Entrar</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body class="centrado">
+<form class="tarjeta login" method="post">
+  <h1>Resubir vídeos</h1>
+  <p class="suave">Maravillado estoy de ti</p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <label>Usuario <input name="usuario" autocomplete="username" required autofocus></label>
+  <label>Contraseña <input name="contraseña" type="password" autocomplete="current-password" required></label>
+  <button class="principal" type="submit">Entrar</button>
+</form>
+</body>
+</html>
