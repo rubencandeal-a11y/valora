@@ -700,7 +700,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <ComboBoxItem Content="Ocultos" Tag="unlisted"/>
               <ComboBoxItem Content="Públicos" Tag="public"/>
             </ComboBox>
-            <CheckBox x:Name="ChkYTEntradaSalida" Foreground="#ECE8E1" VerticalAlignment="Center" Margin="12,0,0,0" Content="Con entrada y salida"
+            <CheckBox x:Name="ChkYTEntradaSalida" IsChecked="True" Foreground="#ECE8E1" VerticalAlignment="Center" Margin="12,0,0,0" Content="Con entrada y salida"
                       ToolTip="Antes de subirlo, cada vídeo se rehace con la entrada animada (fecha) y la salida (versículo y canal)"/>
             <Button x:Name="BtnYTResubir" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="14,6"
                     Margin="8,0,0,0" FontWeight="SemiBold" Content="Resubir seleccionados" IsEnabled="False"/>
