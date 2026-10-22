@@ -700,6 +700,8 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               <ComboBoxItem Content="Ocultos" Tag="unlisted"/>
               <ComboBoxItem Content="Públicos" Tag="public"/>
             </ComboBox>
+            <CheckBox x:Name="ChkYTEntradaSalida" Foreground="#ECE8E1" VerticalAlignment="Center" Margin="12,0,0,0" Content="Con entrada y salida"
+                      ToolTip="Antes de subirlo, cada vídeo se rehace con la entrada animada (fecha) y la salida (versículo y canal)"/>
             <Button x:Name="BtnYTResubir" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="14,6"
                     Margin="8,0,0,0" FontWeight="SemiBold" Content="Resubir seleccionados" IsEnabled="False"/>
           </StackPanel>
@@ -929,7 +931,7 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'BtnYTServidor','ChipYTTrabajo','TxtYTTrabajo','YTServidor','YTUrl','YTUsuario','YTClave','BtnYTEntrar',
                'TxtYTServidorEstado','YTAviso','TxtYTAviso','YTCodigoCaja','TxtYTCodigo','BtnYTCopiar','BtnYTAbrirGoogle',
                'YTBuscar','YTBuscarPista','YTPlaylist','YTTipo','YTEstado','TxtYTSel','BtnYTTodos','BtnYTNinguno',
-               'YTPrivacidad','BtnYTResubir','YTLista','TxtYTCola','YTCola','LateralArriba','LateralMedio','LateralAbajo',
+               'YTPrivacidad','ChkYTEntradaSalida','BtnYTResubir','YTLista','TxtYTCola','YTCola','LateralArriba','LateralMedio','LateralAbajo',
                'YTCred','BtnYTCredCerrar','TxtYTCredEstado','BtnYTPaso2','BtnYTPaso4','YTClientId',
                'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
                'Lateral','LogoFondo','LogoLetra','LogoTexto',
@@ -3015,11 +3017,13 @@ function Send-ResubirYT {
     $item = $ui.YTPrivacidad.SelectedItem
     $canal = if ($script:ytEstado -and $script:ytEstado.youtube_conectado) { $script:ytEstado.canal } else { $null }
     $aviso = if ($canal) { "al canal `"$canal`"" } else { "(YouTube todavía no está conectado: se subirán al canal que se conecte)" }
-    $r = [System.Windows.MessageBox]::Show($win, "Se van a volver a subir $($ids.Count) vídeos $aviso como $(([string]$item.Content).ToLower()).`n`n¿Seguir?",
+    $entradaSalida = [bool]$ui.ChkYTEntradaSalida.IsChecked
+    $con = if ($entradaSalida) { ', con entrada y salida,' } else { '' }
+    $r = [System.Windows.MessageBox]::Show($win, "Se van a volver a subir $($ids.Count) vídeos$con $aviso como $(([string]$item.Content).ToLower()).`n`n¿Seguir?",
         'Resubir vídeos', 'YesNo', 'Question')
     if ($r -ne 'Yes') { return }
     $ui.BtnYTResubir.IsEnabled = $false
-    Invoke-YT 'POST' '/api/cola' @{ ids = $ids; privacidad = [string]$item.Tag } {
+    Invoke-YT 'POST' '/api/cola' @{ ids = $ids; privacidad = [string]$item.Tag; entrada_salida = $entradaSalida } {
         param($res, $err)
         if ($err) { Update-SeleccionYT; Show-ErrorRedYT $err; return }
         # Sin ventanas modales aquí: esto corre dentro del temporizador que atiende las peticiones.
@@ -3191,6 +3195,7 @@ function Update-EstadoYT($e) {
         }
         $izq = New-Object System.Windows.Controls.StackPanel
         [void]$izq.Children.Add((New-TextoYT $item.titulo '#ECE8E1' 13))
+        if ($item.entrada_salida) { [void]$izq.Children.Add((New-TextoYT 'con entrada y salida' '#C8A15A' 11.5)) }
         if ($item.error) { [void]$izq.Children.Add((New-TextoYT $item.error '#F28B82' 12)) }
         [void]$g.Children.Add($der); [void]$g.Children.Add($izq)
         $b.Child = $g
