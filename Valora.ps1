@@ -3210,6 +3210,11 @@ function Get-EstadoYT {
         }
         Set-ChipServidorYT $true
         $script:ytEstado = $res
+        # Al abrir Valora se pide releer el canal, para que salgan los vídeos subidos desde la última vez.
+        if (-not $script:ytListadoPedido) {
+            $script:ytListadoPedido = $true
+            Invoke-YT 'POST' '/api/actualizar' @{} { param($r, $err) $script:ytUltimoListado = (Get-Date).AddSeconds(-30) }
+        }
         Update-EstadoYT $res
     }
 }
