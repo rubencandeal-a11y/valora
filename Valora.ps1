@@ -2057,6 +2057,44 @@ function Stop-SesionAgy([switch]$Todas) {
     $script:sesion = $null
 }
 
+# Perfil principal de Valora: evita cargar el encargo general de programación de
+# agy. Conserva las herramientas de fotos, web, documentos y carpetas que usamos.
+# Va incluido aquí para que el autoactualizador lo lleve a todos los PC.
+function Set-PerfilAgy {
+    $perfil = @'
+---
+name: valora-escritorio
+description: Asistente de Valora para tasar fotografías y trabajar con documentos.
+tools:
+  - view_file
+  - list_dir
+  - find_by_name
+  - grep_search
+  - run_command
+  - search_web
+  - read_url_content
+  - write_to_file
+  - replace_file_content
+  - multi_replace_file_content
+mainAgent: true
+subagent: false
+---
+Eres Valora, un asistente en español para identificar y tasar objetos con fotografías, consultar Foticos Collection y ayudar con documentos y carpetas. Responde directamente y con brevedad salvo que se pida detalle. Sigue las reglas de tasación y el esquema que acompañan a cada ficha. No inventes datos ni precios. Usa herramientas cuando necesites comprobar datos, abrir fotos, consultar fuentes o trabajar con archivos; agrupa operaciones independientes. Para preguntas generales, responde sin explorar carpetas. En trabajos de varios pasos, indica brevemente qué vas a hacer y continúa. No escribas en Foticos Collection: Valora presenta la tasación para que la persona confirme el envío.
+'@
+    try {
+        $dir = Join-Path $env:USERPROFILE '.gemini\config\agents\valora-escritorio'
+        $ruta = Join-Path $dir 'agent.md'
+        if (-not (Test-Path $ruta) -or (Get-Content -LiteralPath $ruta -Raw -Encoding UTF8) -ne $perfil) {
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            [IO.File]::WriteAllText($ruta, $perfil, (New-Object Text.UTF8Encoding $false))
+        }
+        return 'valora-escritorio'
+    } catch {
+        # Una carpeta de configuración no escribible no debe impedir preguntar.
+        return ''
+    }
+}
+
 function Start-SesionAgy {
     # Con una respuesta en curso no se toca nada: la sesión es de esa pregunta.
     if ($script:proc) { return }
@@ -2078,6 +2116,8 @@ function Start-SesionAgy {
     $ws = $script:workspace
     if (-not (Test-Path $ws)) { New-Item -ItemType Directory -Force $ws | Out-Null }
     $argumentos = @('--input-format', 'stream-json', '--output-format', 'stream-json', '--dangerously-skip-permissions', '-p=""')
+    $perfil = Set-PerfilAgy
+    if ($perfil) { $argumentos += @('--agent', $perfil, '--effort', 'low') }
     if ($script:conv -and $script:conv.agyId) { $argumentos += @('--conversation', $script:conv.agyId) }
     foreach ($c in @($script:carpetas)) { $argumentos += @('--add-dir', (Quote-Arg $c)) }
     # Sin esto, Windows pone una marca BOM al principio de la entrada y agy no la entiende.
@@ -2119,16 +2159,12 @@ function Send-PreguntaSesion([string]$mensaje) {
 # (agy la recuerda para las siguientes). Con los campos exactos, agy lo resuelve con uno o dos
 # comandos; sin ellos tanteaba con una docena y tardaba un minuto.
 $GuiaFC = @'
-Foticos Collection (la colección de fotografía de la empresa) tiene una API pública de solo lectura, rápida (menos de 0,5 s) y sin clave. Cuando pregunten por la colección, sus fichas, marcas, tipos o cifras, úsala con Invoke-RestMethod; no busques en internet ni en archivos. Resuélvelo con un solo comando que haga todas las llamadas y saque solo los campos necesarios; no tantees.
-- https://foticoscollection.com/api/v1/stats -> .stats: total_items, total_brands, total_types, total_countries.
-- https://foticoscollection.com/api/v1/items?q=TEXTO&brand_id=ID&type_id=ID&year_min=AÑO&year_max=AÑO&per_page=N&page=P -> .data[]: id, nombre, tipo, foto, descripcion; .meta.total = total encontrado. q busca en descripción y modelo; per_page hasta 200.
-- https://foticoscollection.com/api/v1/items/ID -> id, nombre, marca, tipo, foto.
-- https://foticoscollection.com/api/v1/brands y https://foticoscollection.com/api/v1/types -> .data[]: id, name, items_count.
-foto es una ruta relativa: antepón https://foticoscollection.com.
-run_command ya ejecuta PowerShell: escribe el comando tal cual, nunca dentro de powershell -Command. Ejemplo que funciona:
-$b='https://foticoscollection.com/api/v1'; $s=(Invoke-RestMethod "$b/stats").stats; $r=Invoke-RestMethod "$b/items?q=leica&per_page=3"; "Fichas: $($s.total_items)"; $r.data | Select-Object id, nombre, tipo | Format-Table -AutoSize | Out-String -Width 200
-Para una marca, búscala y cuenta sus fichas en el mismo comando:
-$b='https://foticoscollection.com/api/v1'; $m=(Invoke-RestMethod "$b/brands").data | Where-Object name -match 'kodak'; $m | ForEach-Object { $t=(Invoke-RestMethod "$b/items?brand_id=$($_.id)&per_page=3"); "$($_.name) (id $($_.id)): $($t.meta.total) fichas"; $t.data | Select-Object id, nombre | Format-Table -AutoSize | Out-String -Width 200 }
+Foticos Collection: consulta su API de solo lectura, sin clave, con Invoke-RestMethod. Base https://foticoscollection.com/api/v1. No busques la colección en internet ni en archivos.
+- /stats: .stats.total_items,total_brands,total_types,total_countries.
+- /items?q=TEXTO&brand_id=ID&type_id=ID&year_min=AÑO&year_max=AÑO&per_page=N&page=P: .data[].id,nombre,tipo,foto,descripcion; .meta.total. q busca descripción y modelo; per_page máximo 200.
+- /items/ID: id,nombre,marca,tipo,foto.
+- /brands y /types: .data[].id,name,items_count. Para contar una marca, lee items_count; no descargues sus fichas.
+Fotos relativas: antepón https://foticoscollection.com. run_command ya es PowerShell: no lo envuelvas en powershell -Command. Agrupa las consultas necesarias en un comando y muestra solo lo solicitado.
 '@
 
 function Read-Evento([string]$linea) {
