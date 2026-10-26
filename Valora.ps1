@@ -1242,6 +1242,20 @@ function Show-Respuesta {
     $r = $script:respuesta
     if (-not $r) { return }
     $r.Pintado = Get-Date
+    # Durante el streaming se añade texto a la misma caja: no reconstruir todo el
+    # Markdown por cada fragmento. El formato completo se aplica al terminar.
+    if ($r.EnCurso -and $script:proc -and -not $script:pensando -and $r.Color -eq '#ECE8E1') {
+        $visible = Format-TextoVisible $r.Text
+        $caja = $r.Caja.Content
+        if ($caja -isnot [System.Windows.Controls.TextBox]) {
+            $caja = New-TextoLectura '' $r.Color
+            $r.Caja.Content = $caja
+        }
+        if ($visible.StartsWith($caja.Text, [StringComparison]::Ordinal)) {
+            $caja.AppendText($visible.Substring($caja.Text.Length))
+        } else { $caja.Text = $visible }
+        return
+    }
     if ($r.Color -ne '#ECE8E1') {
         $r.Caja.Content = New-TextoLectura $r.Text $r.Color
         return
@@ -1259,9 +1273,9 @@ function Show-Respuesta {
     $rtb.Document = $doc
 }
 
-# Mientras agy escribe, se repinta como mucho cada 250 ms; este temporizador pinta lo último.
+# Mientras agy escribe se agrupan los fragmentos; el primero se pinta inmediatamente.
 $timerPintar = New-Object System.Windows.Threading.DispatcherTimer
-$timerPintar.Interval = [TimeSpan]::FromMilliseconds(250)
+$timerPintar.Interval = [TimeSpan]::FromMilliseconds(80)
 $timerPintar.Add_Tick({ $timerPintar.Stop(); Show-Respuesta; $ui.Scroll.ScrollToEnd() })
 
 function Add-MensajeUsuario([string]$texto, $adjuntos) {
@@ -1296,13 +1310,20 @@ function Add-MensajeAgy {
     $l.HorizontalAlignment = 'Center'; $l.VerticalAlignment = 'Center'
     $av.Child = $l
     $caja = New-Object System.Windows.Controls.ContentControl
-    $caja.Content = New-TextoLectura 'Pensando…' '#8C929C'
+    $caja.Content = New-TextoLectura 'Preparando tu pregunta…' '#ACB1B9'
+    $pilaRespuesta = New-Object System.Windows.Controls.StackPanel
+    $actividad = New-Object System.Windows.Controls.TextBlock
+    $actividad.FontSize = 12; $actividad.Foreground = Brush '#ACB1B9'; $actividad.Margin = '0,8,0,0'
+    $actividad.Visibility = 'Collapsed'; $actividad.TextWrapping = 'Wrap'
+    [System.Windows.Automation.AutomationProperties]::SetLiveSetting($actividad, 'Polite')
+    [void]$pilaRespuesta.Children.Add($caja); [void]$pilaRespuesta.Children.Add($actividad)
     [System.Windows.Controls.Grid]::SetColumn($caja, 1)
-    [void]$g.Children.Add($av); [void]$g.Children.Add($caja)
+    [System.Windows.Controls.Grid]::SetColumn($pilaRespuesta, 1)
+    [void]$g.Children.Add($av); [void]$g.Children.Add($pilaRespuesta)
     [void]$ui.Chat.Children.Add($g)
     Update-Inicio
     # Text es el Markdown tal como llega de agy; Caja enseña su versión con formato.
-    $script:respuesta = [pscustomobject]@{ Caja = $caja; Text = ''; Color = '#ECE8E1'; Pintado = [datetime]::MinValue }
+    $script:respuesta = [pscustomobject]@{ Caja = $caja; Actividad = $actividad; EnCurso = $false; Text = ''; Color = '#ECE8E1'; Pintado = [datetime]::MinValue }
     $script:pensando = $true
 }
 
@@ -1516,8 +1537,9 @@ function Write-Respuesta([string]$texto, [string]$color = '#ECE8E1') {
         $script:pensando = $false
     }
     $script:respuesta.Text += $texto
-    if (((Get-Date) - $script:respuesta.Pintado).TotalMilliseconds -ge 250) { $timerPintar.Stop(); Show-Respuesta } else { $timerPintar.Start() }
-    $ui.Scroll.ScrollToEnd()
+    if (((Get-Date) - $script:respuesta.Pintado).TotalMilliseconds -ge 80) {
+        $timerPintar.Stop(); Show-Respuesta; $ui.Scroll.ScrollToEnd()
+    } elseif (-not $timerPintar.IsEnabled) { $timerPintar.Start() }
 }
 
 function New-Miniatura([string]$ruta, [int]$alto, [bool]$quitable) {
@@ -1708,6 +1730,9 @@ $timerChk.Add_Tick({
         Update-Cuenta $true
         if ($ui.Login.Visibility -eq 'Visible') { Set-Estado 'Sesión iniciada. ¡Listo para trabajar!' '#81C995' } else { Set-Estado 'Listo.' }
         Hide-Login
+        # Preparar la primera pregunta mientras el usuario escribe, igual que al
+        # abrir una conversación. No envía preguntas ni consume un turno de IA.
+        Start-SesionAgy
     } elseif ($script:codigoMalo) {
         Show-Login 'Google no ha aceptado el código (o ya se había usado). Pulsa el botón y vuelve a intentarlo.'
     } elseif ($script:loginCaducado) {
@@ -1978,9 +2003,19 @@ function Get-TextoPaso($su) {
 
 # Mientras no llega texto, la burbuja enseña cuánto lleva y los pasos que ha dado agy.
 function Show-Pasos {
-    if (-not $script:respuesta -or -not $script:pensando -or -not $script:proc) { return }
+    if (-not $script:respuesta -or -not $script:proc) { return }
     $s = [int]((Get-Date) - $script:inicioTurno).TotalSeconds
-    $lineas = @("Pensando… $s s")
+    $fase = $script:faseTurno
+    if (-not $fase) { $fase = 'Esperando respuesta de la IA' }
+    if (-not $script:pensando) {
+        $textoActividad = "$fase… $s s"
+        if ($script:respuesta.Actividad.Text -ne $textoActividad) { $script:respuesta.Actividad.Text = $textoActividad }
+        $script:respuesta.Actividad.Visibility = 'Visible'
+        return
+    }
+    $script:respuesta.Actividad.Visibility = 'Collapsed'
+    $lineas = @("$fase… $s s")
+    if ($s -ge 15 -and $script:pasos.Count -eq 0) { $lineas += 'La IA sigue sin enviar texto. Puedes parar si no quieres esperar.' }
     $n = $script:pasos.Count
     for ($i = [Math]::Max(0, $n - 6); $i -lt $n; $i++) {
         $marca = if ($i -eq $n - 1) { '›' } else { '✓' }
@@ -1991,7 +2026,7 @@ function Show-Pasos {
     if ($caja.Content -is [System.Windows.Controls.TextBox]) {
         if ($caja.Content.Text -ne $texto) { $caja.Content.Text = $texto }
     } else {
-        $caja.Content = New-TextoLectura $texto '#8C929C'
+        $caja.Content = New-TextoLectura $texto '#ACB1B9'
     }
 }
 
@@ -2105,6 +2140,7 @@ function Read-Evento([string]$linea) {
     }
     switch ($ev.event) {
         'init' {
+            $script:faseTurno = 'Preparando la respuesta'
             $c = $script:convTrabajo
             if ($script:sesion -and $ev.conversation_id) {
                 $script:sesion.agyId = [string]$ev.conversation_id
@@ -2119,9 +2155,10 @@ function Read-Evento([string]$linea) {
         'step_update' {
             $su = $ev.step_update
             if ($su.step_type -eq 'agent_response') {
-                if ($su.text_delta) { Write-Respuesta $su.text_delta }
+                if ($su.text_delta) { $script:faseTurno = 'Escribiendo respuesta'; Write-Respuesta $su.text_delta }
             } elseif ($su.step_type -eq 'tool' -and $su.state -eq 'ACTIVE') {
                 $texto = Get-TextoPaso $su
+                $script:faseTurno = $texto
                 [void]$script:pasos.Add($texto)
                 Set-Estado "$texto…" '#E8A33D'
                 Show-Pasos
@@ -2132,16 +2169,17 @@ function Read-Evento([string]$linea) {
 }
 
 $timer = New-Object System.Windows.Threading.DispatcherTimer
-$timer.Interval = [TimeSpan]::FromMilliseconds(120)
+$timer.Interval = [TimeSpan]::FromMilliseconds(40)
 $timer.Add_Tick({
     if (-not $script:proc) { $timer.Stop(); return }
-    while ($script:outTask -and $script:outTask.IsCompleted) {
+    $lectura = [Diagnostics.Stopwatch]::StartNew()
+    while ($script:outTask -and $script:outTask.IsCompleted -and $lectura.ElapsedMilliseconds -lt 8) {
         $linea = $script:outTask.Result
         if ($null -eq $linea) { $script:outTask = $null; break }
         Read-Evento $linea
         $script:outTask = $script:proc.StandardOutput.ReadLineAsync()
     }
-    while ($script:errTask -and $script:errTask.IsCompleted) {
+    while ($script:errTask -and $script:errTask.IsCompleted -and $lectura.ElapsedMilliseconds -lt 12) {
         $linea = $script:errTask.Result
         if ($null -eq $linea) { $script:errTask = $null; break }
         $linea = Limpiar-Ansi $linea
@@ -2152,12 +2190,13 @@ $timer.Add_Tick({
         if (-not $script:avisoLogin) { Write-Respuesta ($linea + "`n") '#F28B82' }
         $script:errTask = $script:proc.StandardError.ReadLineAsync()
     }
-    if ($script:pensando) { Show-Pasos }
+    Show-Pasos
     $cerrado = -not $script:outTask -and -not $script:errTask -and $script:proc.HasExited
     if ($script:finTurno -or $cerrado) {
         $codigo = if ($script:proc.HasExited) { $script:proc.ExitCode } else { 0 }
         if ($script:proc.HasExited) { Stop-SesionAgy }
         $script:proc = $null
+        if ($script:respuesta) { $script:respuesta.EnCurso = $false; $script:respuesta.Actividad.Visibility = 'Collapsed' }
         $script:finTurno = $false
         $timer.Stop()
         Set-Ocupado $false
@@ -2240,6 +2279,23 @@ function Send-SiguienteEnCola {
 }
 
 function Enviar([string]$instrucciones = '', $pendiente = $null) {
+    if ($script:preparandoEnvio) { return }
+    if ($script:proc) { Enviar-Preparado $instrucciones $pendiente; return }
+    if (-not $pendiente -and -not $ui.Prompt.Text.Trim()) { return }
+    $script:preparandoEnvio = $true
+    $script:envioPreparado = @{ instrucciones = $instrucciones; pendiente = $pendiente }
+    Set-Estado 'Preparando tu pregunta…' '#E8A33D'
+    # Dejar pintar la confirmación antes de copiar adjuntos o guardar el historial.
+    # Loaded va después de Render y antes de nuevas pulsaciones del usuario.
+    $continuar = {
+        try { Enviar-Preparado $script:envioPreparado.instrucciones $script:envioPreparado.pendiente }
+        catch { Set-Estado ('No se pudo enviar la pregunta: ' + $_.Exception.Message) '#F28B82' }
+        finally { $script:preparandoEnvio = $false; $script:envioPreparado = $null }
+    }
+    [void]$win.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Loaded, [Action]$continuar)
+}
+
+function Enviar-Preparado([string]$instrucciones = '', $pendiente = $null) {
     if ($script:proc -and -not $pendiente) {
         $mismo = $script:conv -and $script:convTrabajo -and $script:conv.id -eq $script:convTrabajo.id
         $escrito = $ui.Prompt.Text.Trim()
@@ -2327,6 +2383,7 @@ function Enviar([string]$instrucciones = '', $pendiente = $null) {
     if ($pendiente -and $pendiente.fila -and $ui.Chat.Children.Contains($pendiente.fila)) { $ui.Chat.Children.Remove($pendiente.fila) }
     Add-MensajeUsuario $texto $adjuntos
     Add-MensajeAgy
+    $script:respuesta.EnCurso = $true
     $script:convTrabajo = $script:conv
     $script:filaTrabajo = $ui.Chat.Children[$ui.Chat.Children.Count - 1]
     foreach ($q in $enCola) { [void]$ui.Chat.Children.Add($q.fila) }
@@ -2342,6 +2399,7 @@ function Enviar([string]$instrucciones = '', $pendiente = $null) {
     $script:finTurno = $false
     $script:pasos.Clear()
     $script:inicioTurno = Get-Date
+    $script:faseTurno = 'Esperando respuesta de la IA'
     $script:proc = $script:sesion.proc
     try { Send-PreguntaSesion $mensaje } catch {
         # agy se ha cerrado mientras esperaba: el timer lo verá cerrado y terminará el turno.
@@ -2353,6 +2411,7 @@ function Enviar([string]$instrucciones = '', $pendiente = $null) {
         $script:archivos.Clear(); Update-Adjuntos
     }
     Set-Ocupado $true
+    Show-Pasos
     $quedan = $script:colaPreguntas.Count
     Set-Estado ('Valora está trabajando…' + $(if ($quedan) { " ($quedan en cola)" } else { '' })) '#E8A33D'
     $timer.Start()
