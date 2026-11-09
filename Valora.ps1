@@ -548,8 +548,9 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
     <Grid x:Name="PanelYT" Grid.Column="1" Background="#1F1B1B" Visibility="Collapsed" Panel.ZIndex="4">
       <DockPanel Margin="24,18,24,14">
         <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <StackPanel>
-            <TextBlock Text="Resubir vídeos de YouTube" FontSize="20" FontWeight="SemiBold"/>
+            <TextBlock Text="Resubir vídeos de YouTube" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
             <TextBlock x:Name="TxtYTResumen" Foreground="#8C929C" FontSize="12.5" Margin="0,2,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
               <Border x:Name="ChipYTServidor" CornerRadius="10" Padding="10,4" Background="#363C47" VerticalAlignment="Center" Margin="0,0,6,0">
@@ -560,7 +561,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
               </Border>
             </StackPanel>
           </StackPanel>
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+          <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12,0,0,0">
             <Button x:Name="BtnYTAbrirCanal" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Abrir canal ↗" Visibility="Collapsed"
                     ToolTip="Los últimos vídeos del canal en YouTube Studio (también los privados)"/>
             <Button x:Name="BtnYTVerResubida" Style="{StaticResource Plano}" Foreground="#ECE8E1" Content="Ver resubida" Visibility="Collapsed"
@@ -569,13 +570,15 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                     ToolTip="Subir cada día los siguientes vídeos sin tener que elegirlos">
               <TextBlock><Run Text="⏱ Subida automática · "/><Run x:Name="RunYTAuto" Text="…" Foreground="#8C929C"/></TextBlock>
             </Button>
+            <Button x:Name="BtnYTAutoHistorial" Style="{StaticResource Plano}" Foreground="#ECE8E1" Margin="2,0,0,0" Content="Historial"
+                    ToolTip="Qué ha subido la subida automática cada día"/>
             <Button x:Name="BtnYTConectar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Margin="6,0,0,0" Content="Conectar YouTube"
                     ToolTip="Entrar con la cuenta de Google dueña del canal al que se suben los vídeos"/>
             <Button x:Name="BtnYTActualizar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Actualizar listado"
                     ToolTip="Vuelve a leer la lista de vídeos del canal"/>
             <Button x:Name="BtnYTServidor" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Servidor"
                     ToolTip="Dirección de la web, usuario y contraseña"/>
-          </StackPanel>
+          </WrapPanel>
         </Grid>
 
         <Border x:Name="ChipYTTrabajo" DockPanel.Dock="Top" CornerRadius="10" Padding="12,6" Margin="0,0,0,10" Background="#1E2A24"
@@ -1067,7 +1070,7 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
                'Lateral','LogoFondo','LogoLetra','LogoTexto',
                'BtnYTVerResubida','BtnYTAbrirCanal','YTTitulo','YTResubida','BtnYTResubidaCerrar','TxtYTResubida','YTResubidaLista','BarraYTResubida',
-               'BtnYTAuto','RunYTAuto','YTAuto','BtnYTAutoTabConfig','BtnYTAutoTabHist','BtnYTAutoCerrar','YTAutoConfig','ChkYTAutoActiva','YTAutoPorDia','YTAutoHora','YTAutoDias','YTAutoPrivacidad','YTAutoOrden','ChkYTAutoES','YTAutoDesde','YTAutoHasta','YTAutoLista','YTAutoTipo','YTAutoTexto','YTAutoTope','TxtYTAutoResumen','TxtYTAutoSig','TxtYTAutoAviso','BtnYTAutoGuardar','BtnYTAutoHoy','YTAutoHist','YTAutoHistLista',
+               'BtnYTAuto','BtnYTAutoHistorial','RunYTAuto','YTAuto','BtnYTAutoTabConfig','BtnYTAutoTabHist','BtnYTAutoCerrar','YTAutoConfig','ChkYTAutoActiva','YTAutoPorDia','YTAutoHora','YTAutoDias','YTAutoPrivacidad','YTAutoOrden','ChkYTAutoES','YTAutoDesde','YTAutoHasta','YTAutoLista','YTAutoTipo','YTAutoTexto','YTAutoTope','TxtYTAutoResumen','TxtYTAutoSig','TxtYTAutoAviso','BtnYTAutoGuardar','BtnYTAutoHoy','YTAutoHist','YTAutoHistLista',
                'BtnEstilo','IcoEstilo','PanelEstilo','AtajosEstilo','TxtEstilo','BtnEstiloBorrar','BtnEstiloCancelar','BtnEstiloGuardar') {
     $ui[$n] = $win.FindName($n)
 }
@@ -4357,6 +4360,7 @@ $ui.BtnYTVerResubida.Add_Click({ $ui.YTResubida.Visibility = 'Visible'; if ($scr
 $ui.BtnYTAbrirCanal.Add_Click({ Open-CanalYT })
 $ui.BtnYTResubidaCerrar.Add_Click({ $ui.YTResubida.Visibility = 'Collapsed' })
 $ui.BtnYTAuto.Add_Click({ Open-AutoYT })
+$ui.BtnYTAutoHistorial.Add_Click({ Open-AutoYT; Show-PestanaAutoYT 'hist' })
 $ui.BtnYTAutoCerrar.Add_Click({ $ui.YTAuto.Visibility = 'Collapsed' })
 $ui.BtnYTAutoTabConfig.Add_Click({ Show-PestanaAutoYT 'config' })
 $ui.BtnYTAutoTabHist.Add_Click({ Show-PestanaAutoYT 'hist' })
