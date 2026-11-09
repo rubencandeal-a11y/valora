@@ -16,6 +16,7 @@
     <span id="chip-youtube" class="chip">YouTube…</span>
     <button id="btn-conectar" hidden>Conectar YouTube</button>
     <span id="chip-trabajo" class="chip" hidden></span>
+    <button id="btn-auto" title="Subir cada día los siguientes vídeos sin tener que elegirlos">⏱ Subida automática · <span id="auto-chip">…</span></button>
     <button id="btn-actualizar" title="Vuelve a leer la lista de vídeos del canal">Actualizar listado</button>
     <span class="suave">{{ usuario }}</span>
     <a href="{{ url_for('salir') }}">Salir</a>
@@ -23,6 +24,46 @@
 </header>
 
 <div id="aviso-conexion" class="tarjeta aviso-conexion" hidden></div>
+
+
+<dialog id="dlg-auto">
+  <div class="auto-cab">
+    <h2>Subida automática</h2>
+    <div class="pestanas"><button id="tab-config" class="activa">Configuración</button><button id="tab-hist">Historial</button></div>
+    <button id="auto-cerrar" title="Cerrar">✕</button>
+  </div>
+  <div id="pan-config">
+    <div class="auto-grid">
+      <label class="fila-chk"><input type="checkbox" id="a-activa"> Encendida</label><span></span>
+      <label>Vídeos al día <input type="number" id="a-por-dia" min="1" max="100"></label>
+      <label>Hora <input type="time" id="a-hora"></label>
+      <div class="ancho2"><span class="etq">Días</span><div id="a-dias" class="dias"></div></div>
+      <label>Visibilidad <select id="a-privacidad"><option value="private">Privados</option><option value="unlisted">Ocultos</option><option value="public">Públicos</option></select></label>
+      <label>Orden <select id="a-orden"><option value="asc">▲ Ascendente · más antiguos primero</option><option value="desc">▼ Descendente · más recientes primero</option></select></label>
+      <label class="fila-chk ancho2"><input type="checkbox" id="a-es"> Con entrada y salida</label>
+      <h3 class="ancho2">Condiciones</h3>
+      <label>Desde <input type="date" id="a-desde"></label>
+      <label>Hasta <input type="date" id="a-hasta"></label>
+      <label>Listas (Ctrl para varias) <select id="a-listas" multiple size="5"></select></label>
+      <div>
+        <label>Tipo <select id="a-tipo"><option value="">Shorts y vídeos</option><option value="Short">Solo shorts</option><option value="Vídeo">Solo vídeos</option></select></label>
+        <label>Título contiene <input type="text" id="a-texto" placeholder="(cualquiera)"></label>
+        <label>Parar al llegar a <input type="number" id="a-tope" min="0" placeholder="0 = sin límite"></label>
+      </div>
+    </div>
+    <p id="a-resumen" class="auto-resumen"></p>
+    <p id="a-siguientes" class="suave auto-sig"></p>
+    <p id="a-aviso" class="error"></p>
+    <div class="auto-botones">
+      <button class="principal" id="a-guardar">Guardar</button>
+      <button id="a-hoy">Subir el lote de hoy ya</button>
+    </div>
+  </div>
+  <div id="pan-hist" hidden>
+    <p class="suave" id="h-vacio">Todavía no se ha hecho ningún día.</p>
+    <div id="h-dias"></div>
+  </div>
+</dialog>
 
 <main>
   <section>
@@ -271,6 +312,139 @@ $("btn-conectar").onclick = async () => {
   try { await api("/api/conectar", {}); } finally { $("btn-conectar").disabled = false; }
   cargarEstado();
 };
+
+// ---------- subida automática ----------
+const DIAS = ["L", "M", "X", "J", "V", "S", "D"];
+const ESTADO_TXT = {hecho: "✓ subido", pendiente: "⏳ en la cola", error: "✗ error", quitado: "quitado de la cola"};
+let autoDatos = null, simularTimer = null;
+
+function fechaCorta(f) { return f ? f.split("-").reverse().join("/") : "sin fecha"; }
+
+function planDeLaVentana() {
+  return {
+    activa: $("a-activa").checked, por_dia: +$("a-por-dia").value || 1, hora: $("a-hora").value || "03:00",
+    dias: [...document.querySelectorAll("#a-dias input")].filter(c => c.checked).map(c => +c.value),
+    privacidad: $("a-privacidad").value, orden: $("a-orden").value, entrada_salida: $("a-es").checked,
+    desde: $("a-desde").value, hasta: $("a-hasta").value,
+    listas: [...$("a-listas").selectedOptions].map(o => o.value),
+    tipo: $("a-tipo").value, texto: $("a-texto").value, tope: +$("a-tope").value || 0,
+  };
+}
+
+function pintarChipAuto(d) {
+  const p = d.plan;
+  $("auto-chip").textContent = p.activa ? `activa · ${p.por_dia}/día a las ${p.hora}` : "apagada";
+  $("auto-chip").className = p.activa ? "on" : "off";
+}
+
+function pintarResumenAuto(d) {
+  const p = d.plan;
+  const fin = d.dias_estimados ? new Date(Date.now() + d.dias_estimados * 864e5).toLocaleDateString("es", {month: "short", year: "numeric"}) : "—";
+  $("a-resumen").textContent = `Con estas condiciones entran ${d.quedan.toLocaleString("es")} vídeos · a ${p.por_dia}/día, unos ${d.dias_estimados} días (hasta ${fin}). ` +
+    `Resubidos ${d.total_subidos} de ${d.total_catalogo}` + (d.pendientes ? ` · ${d.pendientes} automáticos siguen en la cola` : "") +
+    (p.ultimo_dia ? ` · último lote: ${fechaCorta(p.ultimo_dia)}` : "");
+  $("a-siguientes").textContent = d.siguientes.length
+    ? `Siguientes ${d.siguientes.length} (${p.orden === "asc" ? "▲" : "▼"}): ` + d.siguientes.map(v => fechaCorta(v.fecha)).join(" · ")
+    : "Ningún vídeo cumple las condiciones.";
+  $("a-aviso").textContent = p.por_dia > 6 ? "Aviso: la cuota de Google suele dar para unos 6 al día; los que no quepan pasan al día siguiente." : "";
+}
+
+function rellenarVentana(d) {
+  const p = d.plan;
+  $("a-activa").checked = p.activa; $("a-por-dia").value = p.por_dia; $("a-hora").value = p.hora;
+  $("a-dias").replaceChildren(...DIAS.map((t, i) => {
+    const l = document.createElement("label"); const c = document.createElement("input");
+    c.type = "checkbox"; c.value = i; c.checked = p.dias.includes(i); l.append(c, t); return l;
+  }));
+  $("a-privacidad").value = p.privacidad; $("a-orden").value = p.orden; $("a-es").checked = p.entrada_salida;
+  $("a-desde").value = p.desde; $("a-hasta").value = p.hasta; $("a-tipo").value = p.tipo;
+  $("a-texto").value = p.texto; $("a-tope").value = p.tope || "";
+  $("a-listas").replaceChildren(new Option("Sin lista", "-"), ...d.listas.map(l => new Option(l, l)));
+  for (const o of $("a-listas").options) o.selected = p.listas.includes(o.value);
+  pintarResumenAuto(d);
+}
+
+async function cargarAuto() {
+  autoDatos = await api("/api/auto");
+  if (autoDatos) pintarChipAuto(autoDatos);
+}
+
+function simularLuego() {
+  clearTimeout(simularTimer);
+  simularTimer = setTimeout(async () => {
+    try { const d = await api("/api/auto", {...planDeLaVentana(), simular: true}); if (d) pintarResumenAuto(d); }
+    catch (e) { $("a-aviso").textContent = "Revisa los datos: " + e.message; }
+  }, 300);
+}
+
+function mostrarPestana(cual) {
+  $("pan-config").hidden = cual !== "config"; $("pan-hist").hidden = cual !== "hist";
+  $("tab-config").classList.toggle("activa", cual === "config"); $("tab-hist").classList.toggle("activa", cual === "hist");
+  if (cual === "hist") cargarHistorial();
+}
+
+async function cargarHistorial() {
+  const d = await api("/api/auto/historial");
+  if (!d) return;
+  $("h-vacio").hidden = d.dias.length > 0;
+  $("h-dias").replaceChildren(...d.dias.map((dia, n) => {
+    const det = document.createElement("details"); det.open = n === 0;
+    const sum = document.createElement("summary");
+    const f = new Date(dia.dia + "T12:00").toLocaleDateString("es", {weekday: "short", day: "2-digit", month: "2-digit"});
+    const c = dia.cuenta, total = dia.videos.length;
+    const clase = total && c.hecho === total ? "ok" : (c.error ? "mal" : "aviso");
+    const b = document.createElement("b"); b.textContent = f;
+    const st = document.createElement("span"); st.className = "chip " + clase;
+    st.textContent = `${c.hecho} de ${total} subidos` + (c.pendiente ? ` · ${c.pendiente} en cola` : "") + (c.error ? ` · ${c.error} con error` : "");
+    const ex = document.createElement("span"); ex.className = "suave";
+    ex.textContent = ` ${dia.hora} · ${dia.por === "automática" ? "automático" : "forzado por " + dia.por} · ${dia.condiciones}` +
+      (dia.arrastrados ? ` · ${dia.arrastrados} venían de días anteriores` : "");
+    sum.append(b, " ", st, ex);
+    const t = document.createElement("table"); t.className = "tabla";
+    const cab = document.createElement("tr");
+    for (const h of ["Original", "Título", "Lista", "Resultado"]) { const th = document.createElement("th"); th.textContent = h; cab.append(th); }
+    t.append(cab);
+    for (const v of dia.videos) {
+      const tr = document.createElement("tr");
+      celda(tr, fechaCorta(v.fecha), "ancho"); celda(tr, v.titulo); celda(tr, v.playlists.join(", ") || "—");
+      const res = document.createElement("span");
+      res.className = v.estado === "hecho" ? "ok" : (v.estado === "error" ? "error" : "suave");
+      res.textContent = ESTADO_TXT[v.estado] || v.estado;
+      const td = celda(tr, res);
+      if (v.nuevo) td.append(" · ", enlace(`https://www.youtube.com/watch?v=${v.nuevo}`, "ver"));
+      if (v.subido) td.append(` · ${v.subido.slice(11)}`);
+      if (v.error) td.append(` · ${v.error}`);
+      t.append(tr);
+    }
+    det.append(sum, t);
+    return det;
+  }));
+}
+
+$("btn-auto").onclick = async () => { await cargarAuto(); rellenarVentana(autoDatos); mostrarPestana("config"); $("dlg-auto").showModal(); };
+$("auto-cerrar").onclick = () => $("dlg-auto").close();
+$("tab-config").onclick = () => mostrarPestana("config");
+$("tab-hist").onclick = () => mostrarPestana("hist");
+$("pan-config").addEventListener("input", simularLuego);
+$("pan-config").addEventListener("change", simularLuego);
+$("a-guardar").onclick = async () => {
+  const p = planDeLaVentana();
+  if (!p.dias.length) { $("a-aviso").textContent = "Marca al menos un día."; return; }
+  try {
+    autoDatos = await api("/api/auto", p);
+    pintarChipAuto(autoDatos); pintarResumenAuto(autoDatos);
+    $("a-aviso").textContent = ""; $("a-resumen").prepend("Guardado. ");
+  } catch (e) { $("a-aviso").textContent = "No se ha podido guardar: " + e.message; }
+};
+$("a-hoy").onclick = async () => {
+  const n = +$("a-por-dia").value || 1;
+  if (!confirm(`Se meten ya en la cola hasta ${n} vídeos con la configuración guardada. ¿Seguir?`)) return;
+  const r = await api("/api/auto/hoy", {});
+  alert(`${r.añadidos} vídeos añadidos a la cola.`);
+  autoDatos = r; pintarResumenAuto(r); cargarEstado(); cargarVideos();
+};
+cargarAuto();
+setInterval(cargarAuto, 60000);
 
 cargarVideos();
 cargarEstado();

@@ -565,6 +565,10 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                     ToolTip="Los últimos vídeos del canal en YouTube Studio (también los privados)"/>
             <Button x:Name="BtnYTVerResubida" Style="{StaticResource Plano}" Foreground="#ECE8E1" Content="Ver resubida" Visibility="Collapsed"
                     ToolTip="En qué va cada vídeo de la última resubida, con su compilación y su enlace"/>
+            <Button x:Name="BtnYTAuto" Style="{StaticResource Plano}" Foreground="#ECE8E1" Margin="6,0,0,0"
+                    ToolTip="Subir cada día los siguientes vídeos sin tener que elegirlos">
+              <TextBlock><Run Text="⏱ Subida automática · "/><Run x:Name="RunYTAuto" Text="…" Foreground="#8C929C"/></TextBlock>
+            </Button>
             <Button x:Name="BtnYTConectar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Margin="6,0,0,0" Content="Conectar YouTube"
                     ToolTip="Entrar con la cuenta de Google dueña del canal al que se suben los vídeos"/>
             <Button x:Name="BtnYTActualizar" Style="{StaticResource Plano}" Foreground="#ACB1B9" Content="Actualizar listado"
@@ -780,6 +784,92 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
           </DockPanel>
         </Border>
       </Grid>
+
+      <!-- Subida automática diaria: configuración e historial -->
+      <Grid x:Name="YTAuto" Background="#CC0E1014" Visibility="Collapsed">
+        <Border Width="720" MaxHeight="640" Background="#252930" CornerRadius="18" Padding="22,18" BorderBrush="#363C47" BorderThickness="1"
+                VerticalAlignment="Center" HorizontalAlignment="Center">
+          <DockPanel>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Subida automática" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button x:Name="BtnYTAutoTabConfig" Style="{StaticResource Plano}" Foreground="#ECE8E1" Margin="16,0,0,0" Content="Configuración"/>
+                <Button x:Name="BtnYTAutoTabHist" Style="{StaticResource Plano}" Foreground="#8C929C" Margin="4,0,0,0" Content="Historial"/>
+              </StackPanel>
+              <Button x:Name="BtnYTAutoCerrar" Style="{StaticResource Plano}" Padding="6" HorizontalAlignment="Right" ToolTip="Cerrar">
+                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE711;" FontSize="11"/>
+              </Button>
+            </Grid>
+            <ScrollViewer x:Name="YTAutoConfig" VerticalScrollBarVisibility="Auto">
+              <StackPanel>
+                <CheckBox x:Name="ChkYTAutoActiva" Foreground="#ECE8E1" Content="Encendida" FontSize="14" Margin="0,0,0,10"/>
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                  <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,8">
+                    <TextBlock Text="Vídeos al día" Foreground="#8C929C" FontSize="12.5"/>
+                    <TextBox x:Name="YTAutoPorDia" Background="#181B20" Foreground="#ECE8E1" CaretBrush="#ECE8E1" BorderBrush="#363C47" Padding="6,4"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,8">
+                    <TextBlock Text="Hora (HH:MM)" Foreground="#8C929C" FontSize="12.5"/>
+                    <TextBox x:Name="YTAutoHora" Background="#181B20" Foreground="#ECE8E1" CaretBrush="#ECE8E1" BorderBrush="#363C47" Padding="6,4"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,0,0,8">
+                    <TextBlock Text="Días" Foreground="#8C929C" FontSize="12.5"/>
+                    <StackPanel x:Name="YTAutoDias" Orientation="Horizontal" Margin="0,4,0,0"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,8">
+                    <TextBlock Text="Visibilidad" Foreground="#8C929C" FontSize="12.5"/>
+                    <ComboBox x:Name="YTAutoPrivacidad">
+                      <ComboBoxItem Content="Privados" Tag="private"/><ComboBoxItem Content="Ocultos" Tag="unlisted"/><ComboBoxItem Content="Públicos" Tag="public"/>
+                    </ComboBox>
+                  </StackPanel>
+                  <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,8">
+                    <TextBlock Text="Orden" Foreground="#8C929C" FontSize="12.5"/>
+                    <ComboBox x:Name="YTAutoOrden">
+                      <ComboBoxItem Content="▲ Ascendente · más antiguos primero" Tag="asc"/><ComboBoxItem Content="▼ Descendente · más recientes primero" Tag="desc"/>
+                    </ComboBox>
+                  </StackPanel>
+                  <CheckBox x:Name="ChkYTAutoES" Grid.Row="3" Grid.ColumnSpan="3" Foreground="#ECE8E1" Content="Con entrada y salida" Margin="0,0,0,10"/>
+                  <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,8">
+                    <TextBlock Text="Desde (AAAA-MM-DD)" Foreground="#8C929C" FontSize="12.5"/>
+                    <TextBox x:Name="YTAutoDesde" Background="#181B20" Foreground="#ECE8E1" CaretBrush="#ECE8E1" BorderBrush="#363C47" Padding="6,4"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="4" Grid.Column="2" Margin="0,0,0,8">
+                    <TextBlock Text="Hasta (AAAA-MM-DD)" Foreground="#8C929C" FontSize="12.5"/>
+                    <TextBox x:Name="YTAutoHasta" Background="#181B20" Foreground="#ECE8E1" CaretBrush="#ECE8E1" BorderBrush="#363C47" Padding="6,4"/>
+                  </StackPanel>
+                  <StackPanel Grid.Row="5" Grid.Column="0" Margin="0,0,0,8">
+                    <TextBlock Text="Lista" Foreground="#8C929C" FontSize="12.5"/>
+                    <ComboBox x:Name="YTAutoLista"/>
+                    <TextBlock Text="Tipo" Foreground="#8C929C" FontSize="12.5" Margin="0,8,0,0"/>
+                    <ComboBox x:Name="YTAutoTipo">
+                      <ComboBoxItem Content="Shorts y vídeos" Tag=""/><ComboBoxItem Content="Solo shorts" Tag="Short"/><ComboBoxItem Content="Solo vídeos" Tag="Vídeo"/>
+                    </ComboBox>
+                  </StackPanel>
+                  <StackPanel Grid.Row="5" Grid.Column="2" Margin="0,0,0,8">
+                    <TextBlock Text="Título contiene" Foreground="#8C929C" FontSize="12.5"/>
+                    <TextBox x:Name="YTAutoTexto" Background="#181B20" Foreground="#ECE8E1" CaretBrush="#ECE8E1" BorderBrush="#363C47" Padding="6,4"/>
+                    <TextBlock Text="Parar al llegar a (0 = sin límite)" Foreground="#8C929C" FontSize="12.5" Margin="0,8,0,0"/>
+                    <TextBox x:Name="YTAutoTope" Background="#181B20" Foreground="#ECE8E1" CaretBrush="#ECE8E1" BorderBrush="#363C47" Padding="6,4"/>
+                  </StackPanel>
+                </Grid>
+                <TextBlock x:Name="TxtYTAutoResumen" FontWeight="SemiBold" FontSize="13.5" TextWrapping="Wrap" Margin="0,8,0,4"/>
+                <TextBlock x:Name="TxtYTAutoSig" Foreground="#8C929C" FontSize="12.5" TextWrapping="Wrap"/>
+                <TextBlock x:Name="TxtYTAutoAviso" Foreground="#F2C46D" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                  <Button x:Name="BtnYTAutoGuardar" Style="{StaticResource Plano}" Background="#C4302B" Foreground="White" Padding="14,6" FontWeight="SemiBold" Content="Guardar"/>
+                  <Button x:Name="BtnYTAutoHoy" Style="{StaticResource Plano}" Foreground="#ECE8E1" Margin="8,0,0,0" Content="Subir el lote de hoy ya"
+                          ToolTip="Mete ya en la cola el lote de hoy con la configuración guardada, sin esperar a la hora"/>
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+            <ScrollViewer x:Name="YTAutoHist" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+              <StackPanel x:Name="YTAutoHistLista"/>
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+      </Grid>
     </Grid>
 
     <!-- Cómo quiere el usuario que responda Valora -->
@@ -977,6 +1067,7 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
                'Lateral','LogoFondo','LogoLetra','LogoTexto',
                'BtnYTVerResubida','BtnYTAbrirCanal','YTTitulo','YTResubida','BtnYTResubidaCerrar','TxtYTResubida','YTResubidaLista','BarraYTResubida',
+               'BtnYTAuto','RunYTAuto','YTAuto','BtnYTAutoTabConfig','BtnYTAutoTabHist','BtnYTAutoCerrar','YTAutoConfig','ChkYTAutoActiva','YTAutoPorDia','YTAutoHora','YTAutoDias','YTAutoPrivacidad','YTAutoOrden','ChkYTAutoES','YTAutoDesde','YTAutoHasta','YTAutoLista','YTAutoTipo','YTAutoTexto','YTAutoTope','TxtYTAutoResumen','TxtYTAutoSig','TxtYTAutoAviso','BtnYTAutoGuardar','BtnYTAutoHoy','YTAutoHist','YTAutoHistLista',
                'BtnEstilo','IcoEstilo','PanelEstilo','AtajosEstilo','TxtEstilo','BtnEstiloBorrar','BtnEstiloCancelar','BtnEstiloGuardar') {
     $ui[$n] = $win.FindName($n)
 }
@@ -3417,6 +3508,7 @@ function Get-VideosYT {
         $resubidos = @($script:ytVideos | Where-Object { $_.resubido }).Count
         $ui.TxtYTResumen.Text = "$($script:ytVideos.Count) vídeos · $resubidos resubidos · listado del $($res.generado)"
         Update-ListaYT
+        Get-AutoYT
     }
 }
 
@@ -3494,6 +3586,241 @@ function Send-ResubirYT {
         Get-VideosYT
         Get-EstadoYT
     } $ids
+}
+
+# ---------- Subida automática diaria (plan.json en la web de resubida) ----------
+$script:ytAuto = $null
+$script:ytAutoRellenando = $false
+$script:ytAutoSimular = $null
+
+function Format-FechaYT([string]$f) { if ($f) { return ($f -split '-')[2..0] -join '/' } return 'sin fecha' }
+
+function Set-ComboPorTag($combo, [string]$tag) {
+    foreach ($it in $combo.Items) { if ([string]$it.Tag -eq $tag) { $combo.SelectedItem = $it; return } }
+    if ($combo.Items.Count) { $combo.SelectedIndex = 0 }
+}
+
+function Update-ChipAutoYT($d) {
+    if (-not $d) { return }
+    $p = $d.plan
+    $ui.RunYTAuto.Text = if ($p.activa) { "activa · $($p.por_dia)/día a las $($p.hora)" } else { 'apagada' }
+    $ui.RunYTAuto.Foreground = Brush $(if ($p.activa) { '#81C995' } else { '#8C929C' })
+}
+
+function Get-AutoYT {
+    if (-not (Get-TokenYT)) { return }
+    Invoke-YT 'GET' '/api/auto' $null {
+        param($res, $err)
+        if ($err -or -not $res) { return }
+        $script:ytAuto = $res
+        Update-ChipAutoYT $res
+    }
+}
+
+function Get-PlanVentanaYT {
+    $dias = @($ui.YTAutoDias.Children | Where-Object { $_.IsChecked } | ForEach-Object { [int]$_.Tag })
+    $n = 0; [void][int]::TryParse($ui.YTAutoPorDia.Text.Trim(), [ref]$n)
+    $tope = 0; [void][int]::TryParse($ui.YTAutoTope.Text.Trim(), [ref]$tope)
+    $lista = Get-ValorCombo $ui.YTAutoLista
+    return @{
+        activa = [bool]$ui.ChkYTAutoActiva.IsChecked; por_dia = [math]::Max(1, $n); hora = $ui.YTAutoHora.Text.Trim()
+        dias = $dias; privacidad = Get-ValorCombo $ui.YTAutoPrivacidad; orden = Get-ValorCombo $ui.YTAutoOrden
+        entrada_salida = [bool]$ui.ChkYTAutoES.IsChecked; desde = $ui.YTAutoDesde.Text.Trim(); hasta = $ui.YTAutoHasta.Text.Trim()
+        listas = @(if ($lista) { $lista }); tipo = Get-ValorCombo $ui.YTAutoTipo; texto = $ui.YTAutoTexto.Text.Trim(); tope = [math]::Max(0, $tope)
+    }
+}
+
+function Show-ResumenAutoYT($d) {
+    $p = $d.plan
+    $es = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
+    $fin = if ($d.dias_estimados) { (Get-Date).AddDays([int]$d.dias_estimados).ToString('MMM yyyy', $es) } else { '—' }
+    $txt = "Con estas condiciones entran $(([int]$d.quedan).ToString('N0', $es)) vídeos · a $($p.por_dia)/día, unos $($d.dias_estimados) días (hasta $fin). " +
+        "Resubidos $($d.total_subidos) de $($d.total_catalogo)"
+    if ($d.pendientes) { $txt += " · $($d.pendientes) automáticos siguen en la cola" }
+    if ($p.ultimo_dia) { $txt += " · último lote: $(Format-FechaYT $p.ultimo_dia)" }
+    $ui.TxtYTAutoResumen.Text = $txt
+    $sig = @($d.siguientes)
+    $flecha = if ($p.orden -eq 'asc') { '▲' } else { '▼' }
+    $ui.TxtYTAutoSig.Text = if ($sig.Count) { "Siguientes $($sig.Count) ($flecha): " + (($sig | ForEach-Object { Format-FechaYT $_.fecha }) -join ' · ') } else { 'Ningún vídeo cumple las condiciones.' }
+    $ui.TxtYTAutoAviso.Text = if ($p.por_dia -gt 6) { 'Aviso: la cuota de Google suele dar para unos 6 al día; los que no quepan pasan al día siguiente.' } else { '' }
+}
+
+function Show-VentanaAutoYT($d) {
+    $script:ytAutoRellenando = $true
+    try {
+        $p = $d.plan
+        $ui.ChkYTAutoActiva.IsChecked = [bool]$p.activa
+        $ui.YTAutoPorDia.Text = [string]$p.por_dia
+        $ui.YTAutoHora.Text = [string]$p.hora
+        $ui.YTAutoDias.Children.Clear()
+        $nombres = 'L', 'M', 'X', 'J', 'V', 'S', 'D'
+        for ($i = 0; $i -lt 7; $i++) {
+            $c = New-Object System.Windows.Controls.CheckBox
+            $c.Content = $nombres[$i]; $c.Tag = $i; $c.Foreground = Brush '#ECE8E1'; $c.Margin = '0,0,14,0'
+            $c.IsChecked = @($p.dias) -contains $i
+            $c.Add_Click({ Request-SimularAutoYT })
+            [void]$ui.YTAutoDias.Children.Add($c)
+        }
+        Set-ComboPorTag $ui.YTAutoPrivacidad $p.privacidad
+        Set-ComboPorTag $ui.YTAutoOrden $p.orden
+        $ui.ChkYTAutoES.IsChecked = [bool]$p.entrada_salida
+        $ui.YTAutoDesde.Text = [string]$p.desde
+        $ui.YTAutoHasta.Text = [string]$p.hasta
+        $ui.YTAutoLista.Items.Clear()
+        foreach ($l in @(@('Todas las listas', ''), @('Sin lista', '-')) + @($d.listas | ForEach-Object { , @($_, $_) })) {
+            $it = New-Object System.Windows.Controls.ComboBoxItem
+            $it.Content = $l[0]; $it.Tag = $l[1]
+            [void]$ui.YTAutoLista.Items.Add($it)
+        }
+        Set-ComboPorTag $ui.YTAutoLista $(if (@($p.listas).Count) { @($p.listas)[0] } else { '' })
+        Set-ComboPorTag $ui.YTAutoTipo $p.tipo
+        $ui.YTAutoTexto.Text = [string]$p.texto
+        $ui.YTAutoTope.Text = if ($p.tope) { [string]$p.tope } else { '' }
+        Show-ResumenAutoYT $d
+    } finally { $script:ytAutoRellenando = $false }
+}
+
+function Request-SimularAutoYT {
+    if ($script:ytAutoRellenando -or $ui.YTAuto.Visibility -ne 'Visible') { return }
+    $script:ytAutoSimular = (Get-Date).AddMilliseconds(400)
+    $timerAutoYT.Start()
+}
+
+$timerAutoYT = New-Object System.Windows.Threading.DispatcherTimer
+$timerAutoYT.Interval = [TimeSpan]::FromMilliseconds(150)
+$timerAutoYT.Add_Tick({
+    if (-not $script:ytAutoSimular -or (Get-Date) -lt $script:ytAutoSimular) { return }
+    $script:ytAutoSimular = $null
+    $timerAutoYT.Stop()
+    $plan = Get-PlanVentanaYT
+    if (-not $plan.dias.Count -or $plan.hora -notmatch '^\d{1,2}:\d{2}$') { $ui.TxtYTAutoAviso.Text = 'Revisa la hora y marca al menos un día.'; return }
+    $plan.simular = $true
+    Invoke-YT 'POST' '/api/auto' $plan {
+        param($res, $err)
+        if ($err) { $ui.TxtYTAutoAviso.Text = "Revisa los datos: $err"; return }
+        Show-ResumenAutoYT $res
+    }
+})
+
+function Show-PestanaAutoYT([string]$cual) {
+    $ui.YTAutoConfig.Visibility = if ($cual -eq 'config') { 'Visible' } else { 'Collapsed' }
+    $ui.YTAutoHist.Visibility = if ($cual -eq 'hist') { 'Visible' } else { 'Collapsed' }
+    $ui.BtnYTAutoTabConfig.Foreground = Brush $(if ($cual -eq 'config') { '#ECE8E1' } else { '#8C929C' })
+    $ui.BtnYTAutoTabHist.Foreground = Brush $(if ($cual -eq 'hist') { '#ECE8E1' } else { '#8C929C' })
+    if ($cual -eq 'hist') { Get-HistorialAutoYT }
+}
+
+function New-TextoYT([string]$texto, [string]$color = '#ECE8E1', [double]$tam = 12.5, [string]$peso = 'Normal') {
+    $t = New-Object System.Windows.Controls.TextBlock
+    $t.Text = $texto; $t.Foreground = Brush $color; $t.FontSize = $tam; $t.FontWeight = $peso; $t.TextWrapping = 'Wrap'
+    return $t
+}
+
+function Get-HistorialAutoYT {
+    $ui.YTAutoHistLista.Children.Clear()
+    [void]$ui.YTAutoHistLista.Children.Add((New-TextoYT 'Cargando…' '#8C929C'))
+    Invoke-YT 'GET' '/api/auto/historial' $null {
+        param($res, $err)
+        $ui.YTAutoHistLista.Children.Clear()
+        if ($err) { [void]$ui.YTAutoHistLista.Children.Add((New-TextoYT "No se ha podido leer: $err" '#F28B82')); return }
+        $dias = @($res.dias)
+        if (-not $dias.Count) { [void]$ui.YTAutoHistLista.Children.Add((New-TextoYT 'Todavía no se ha hecho ningún día.' '#8C929C')); return }
+        $es = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
+        $primero = $true
+        foreach ($dia in $dias) {
+            $total = @($dia.videos).Count
+            $c = $dia.cuenta
+            $color = if ($total -and $c.hecho -eq $total) { '#81C995' } elseif ($c.error) { '#F28B82' } else { '#F2C46D' }
+            $fecha = ([datetime]::ParseExact($dia.dia, 'yyyy-MM-dd', $null)).ToString('ddd dd/MM', $es)
+            $resumen = "$($c.hecho) de $total subidos" + $(if ($c.pendiente) { " · $($c.pendiente) en cola" } else { '' }) + $(if ($c.error) { " · $($c.error) con error" } else { '' })
+            $exp = New-Object System.Windows.Controls.Expander
+            $exp.IsExpanded = $primero; $primero = $false
+            $exp.Foreground = Brush '#ECE8E1'; $exp.Margin = '0,0,0,8'
+            $cab = New-Object System.Windows.Controls.TextBlock
+            $cab.TextWrapping = 'Wrap'
+            $r1 = New-Object System.Windows.Documents.Run ("$fecha  "); $r1.FontWeight = 'SemiBold'
+            $r2 = New-Object System.Windows.Documents.Run ($resumen); $r2.Foreground = Brush $color
+            $quien = if ($dia.por -eq 'automática') { 'automático' } else { "forzado por $($dia.por)" }
+            $extra = "  · $($dia.hora) · $quien · $($dia.condiciones)" + $(if ($dia.arrastrados) { " · $($dia.arrastrados) venían de días anteriores" } else { '' })
+            $r3 = New-Object System.Windows.Documents.Run ($extra); $r3.Foreground = Brush '#8C929C'; $r3.FontSize = 12
+            $cab.Inlines.Add($r1); $cab.Inlines.Add($r2); $cab.Inlines.Add($r3)
+            $exp.Header = $cab
+            $lista = New-Object System.Windows.Controls.StackPanel
+            $lista.Margin = '22,6,0,0'
+            foreach ($v in @($dia.videos)) {
+                $estado = switch ($v.estado) { 'hecho' { '✓ subido' } 'pendiente' { '⏳ en la cola' } 'error' { '✗ error' } default { 'quitado de la cola' } }
+                $col = switch ($v.estado) { 'hecho' { '#81C995' } 'error' { '#F28B82' } default { '#8C929C' } }
+                $fila = New-Object System.Windows.Controls.TextBlock
+                $fila.TextWrapping = 'Wrap'; $fila.Margin = '0,2,0,2'; $fila.FontSize = 12.5
+                $a = New-Object System.Windows.Documents.Run ("$(Format-FechaYT $v.fecha)  $($v.titulo)  ·  $(if (@($v.playlists).Count) { @($v.playlists) -join ', ' } else { 'sin lista' })  ·  ")
+                $a.Foreground = Brush '#CDCAC3'
+                $b = New-Object System.Windows.Documents.Run ($estado); $b.Foreground = Brush $col
+                $fila.Inlines.Add($a); $fila.Inlines.Add($b)
+                if ($v.nuevo) {
+                    $fila.Inlines.Add((New-Object System.Windows.Documents.Run '  ·  '))
+                    $h = New-Object System.Windows.Documents.Hyperlink (New-Object System.Windows.Documents.Run 'ver')
+                    $h.NavigateUri = [Uri]"https://www.youtube.com/watch?v=$($v.nuevo)"
+                    $h.Foreground = Brush '#8AB4F8'
+                    $h.Add_RequestNavigate({ param($s, $e) Start-Process $e.Uri.AbsoluteUri })
+                    $fila.Inlines.Add($h)
+                }
+                if ($v.subido) { $fila.Inlines.Add((New-Object System.Windows.Documents.Run "  ·  $(([string]$v.subido).Substring(11))")) }
+                if ($v.error) { $e2 = New-Object System.Windows.Documents.Run "  ·  $($v.error)"; $e2.Foreground = Brush '#F28B82'; $fila.Inlines.Add($e2) }
+                [void]$lista.Children.Add($fila)
+            }
+            $exp.Content = $lista
+            [void]$ui.YTAutoHistLista.Children.Add($exp)
+        }
+    }
+}
+
+function Open-AutoYT {
+    if (-not (Get-TokenYT)) { Show-ServidorYT 'Primero entra en la web de resubida.' '#F2C46D'; return }
+    $ui.TxtYTAutoResumen.Text = 'Cargando…'
+    $ui.YTAuto.Visibility = 'Visible'
+    Show-PestanaAutoYT 'config'
+    Invoke-YT 'GET' '/api/auto' $null {
+        param($res, $err)
+        if ($err) { $ui.TxtYTAutoResumen.Text = ''; $ui.TxtYTAutoAviso.Text = "No se llega a la web: $err (¿está actualizada la web de resubida?)"; return }
+        $script:ytAuto = $res
+        Update-ChipAutoYT $res
+        Show-VentanaAutoYT $res
+    }
+}
+
+function Save-AutoYT {
+    $plan = Get-PlanVentanaYT
+    if (-not $plan.dias.Count) { $ui.TxtYTAutoAviso.Text = 'Marca al menos un día.'; return }
+    if ($plan.hora -notmatch '^\d{1,2}:\d{2}$') { $ui.TxtYTAutoAviso.Text = 'La hora va como 03:00.'; return }
+    $ui.BtnYTAutoGuardar.IsEnabled = $false
+    Invoke-YT 'POST' '/api/auto' $plan {
+        param($res, $err)
+        $ui.BtnYTAutoGuardar.IsEnabled = $true
+        if ($err) { $ui.TxtYTAutoAviso.Text = "No se ha podido guardar: $err"; return }
+        $script:ytAuto = $res
+        Update-ChipAutoYT $res
+        Show-ResumenAutoYT $res
+        $estado = if ($res.plan.activa) { "activa, $($res.plan.por_dia) al día a las $($res.plan.hora)" } else { 'apagada' }
+        Set-Estado "Subida automática guardada: $estado." '#81C995'
+    }
+}
+
+function Send-AutoHoyYT {
+    $n = 0; [void][int]::TryParse($ui.YTAutoPorDia.Text.Trim(), [ref]$n)
+    $r = [System.Windows.MessageBox]::Show($win, "Se meten ya en la cola hasta $n vídeos con la configuración guardada, sin esperar a la hora.`n`n¿Seguir?",
+        'Subida automática', 'YesNo', 'Question')
+    if ($r -ne 'Yes') { return }
+    $ui.BtnYTAutoHoy.IsEnabled = $false
+    Invoke-YT 'POST' '/api/auto/hoy' @{} {
+        param($res, $err)
+        $ui.BtnYTAutoHoy.IsEnabled = $true
+        if ($err) { $ui.TxtYTAutoAviso.Text = "No se ha podido: $err"; return }
+        $script:ytAuto = $res
+        Show-ResumenAutoYT $res
+        Set-Estado "$($res.añadidos) vídeos añadidos a la cola por la subida automática." '#81C995'
+        Get-VideosYT
+        Get-EstadoYT
+    }
 }
 
 function Get-EstadoYT {
@@ -4029,6 +4356,15 @@ $ui.BtnYTResubir.Add_Click({ Send-ResubirYT })
 $ui.BtnYTVerResubida.Add_Click({ $ui.YTResubida.Visibility = 'Visible'; if ($script:ytEstado) { Update-ResubidaYT $script:ytEstado } })
 $ui.BtnYTAbrirCanal.Add_Click({ Open-CanalYT })
 $ui.BtnYTResubidaCerrar.Add_Click({ $ui.YTResubida.Visibility = 'Collapsed' })
+$ui.BtnYTAuto.Add_Click({ Open-AutoYT })
+$ui.BtnYTAutoCerrar.Add_Click({ $ui.YTAuto.Visibility = 'Collapsed' })
+$ui.BtnYTAutoTabConfig.Add_Click({ Show-PestanaAutoYT 'config' })
+$ui.BtnYTAutoTabHist.Add_Click({ Show-PestanaAutoYT 'hist' })
+$ui.BtnYTAutoGuardar.Add_Click({ Save-AutoYT })
+$ui.BtnYTAutoHoy.Add_Click({ Send-AutoHoyYT })
+foreach ($c in 'YTAutoPorDia', 'YTAutoHora', 'YTAutoDesde', 'YTAutoHasta', 'YTAutoTexto', 'YTAutoTope') { $ui[$c].Add_TextChanged({ Request-SimularAutoYT }) }
+foreach ($c in 'YTAutoPrivacidad', 'YTAutoOrden', 'YTAutoLista', 'YTAutoTipo') { $ui[$c].Add_SelectionChanged({ Request-SimularAutoYT }) }
+foreach ($c in 'ChkYTAutoActiva', 'ChkYTAutoES') { $ui[$c].Add_Click({ Request-SimularAutoYT }) }
 
 $VersionFile = Join-Path $ConfigDir 'version.json'
 $script:upd = $null

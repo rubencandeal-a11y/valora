@@ -26,6 +26,7 @@ from flask import Flask, abort, g, jsonify, redirect, render_template, request, 
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import automatica
 import descargar
 import editar
 import inventario
@@ -206,6 +207,40 @@ def trabajador() -> None:
         except Exception as error:  # que un fallo raro no mate el hilo
             subir.log(f"Error en el trabajador: {error}")
             time.sleep(10)
+
+
+def revisar_automatica(ahora: datetime | None = None, forzar: bool = False, por: str = "automática") -> list[dict]:
+    """Si toca (o se fuerza), mete en la cola el lote del día y lo apunta en el historial."""
+    ahora = ahora or datetime.now()
+    with automatica.cerrojo:
+        plan = automatica.leer_plan()
+        if not forzar and not automatica.toca(plan, ahora):
+            return []
+        catalogo = subir.leer_json(BASE / "catalogo.json", {"videos": []})
+        subidos = subir.leer_json(subir.RUTA_SUBIDOS, {})
+        historial = automatica.leer_historial()
+        with cerrojo:
+            cola = leer_cola()
+            arrastrados = automatica.pendientes_automaticos(cola)
+            nuevos = automatica.meter_lote(cola, catalogo, subidos, plan, historial, ahora, por)
+            guardar_cola(cola)
+        automatica.apuntar_dia(historial, plan, ahora, nuevos, arrastrados, por)
+        automatica.guardar_historial(historial)
+        plan["ultimo_dia"] = ahora.strftime("%Y-%m-%d")
+        automatica.guardar_plan(plan)
+    subir.log(f"Subida automática ({por}): {len(nuevos)} vídeos a la cola"
+              f"{f', {arrastrados} siguen de días anteriores' if arrastrados else ''} · {automatica.describir(plan)}")
+    return nuevos
+
+
+def programador() -> None:
+    """Hilo que cada 30 segundos mira si toca meter el lote de la subida automática."""
+    while True:
+        try:
+            revisar_automatica()
+        except Exception as error:
+            subir.log(f"Error en la subida automática: {error}")
+        time.sleep(30)
 
 
 # ---------- web ----------
@@ -394,6 +429,57 @@ def api_cola_quitar():
                 if not (i["id"] in ids and i["estado"] in ("pendiente", "error"))]
         guardar_cola(cola)
     return jsonify({"ok": True})
+
+
+def datos_automatica(plan: dict | None = None) -> dict:
+    catalogo = subir.leer_json(BASE / "catalogo.json", {"videos": []})
+    subidos = subir.leer_json(subir.RUTA_SUBIDOS, {})
+    datos = automatica.resumen(plan or automatica.leer_plan(), catalogo, subidos, leer_cola(),
+                               automatica.leer_historial())
+    datos["listas"] = catalogo.get("playlists", [])
+    return datos
+
+
+@app.route("/api/auto")
+@con_login
+def api_auto():
+    """Configuración de la subida automática, cuántos vídeos entran y los siguientes."""
+    return jsonify(datos_automatica())
+
+
+@app.route("/api/auto", methods=["POST"])
+@con_login
+def api_auto_guardar():
+    """Guarda la configuración. Con "simular": true solo recalcula, sin guardar (para el contador en vivo)."""
+    datos = request.get_json(silent=True) or {}
+    try:
+        plan = automatica.validar(datos, automatica.leer_plan())
+    except (ValueError, TypeError) as error:
+        return jsonify({"error": f"Dato no válido: {error}"}), 400
+    if datos.get("simular"):
+        return jsonify(datos_automatica(plan))
+    with automatica.cerrojo:
+        actual = automatica.leer_plan()
+        plan["ultimo_dia"] = actual["ultimo_dia"]
+        automatica.guardar_plan(plan)
+    subir.log(f"{g.usuario} guarda la subida automática: {'activa' if plan['activa'] else 'apagada'}, "
+              f"{plan['por_dia']}/día a las {plan['hora']} · {automatica.describir(plan)}")
+    return jsonify(datos_automatica())
+
+
+@app.route("/api/auto/hoy", methods=["POST"])
+@con_login
+def api_auto_hoy():
+    """Mete ya el lote de hoy, sin esperar a la hora."""
+    nuevos = revisar_automatica(forzar=True, por=g.usuario)
+    return jsonify({"añadidos": len(nuevos), **datos_automatica()})
+
+
+@app.route("/api/auto/historial")
+@con_login
+def api_auto_historial():
+    subidos = subir.leer_json(subir.RUTA_SUBIDOS, {})
+    return jsonify({"dias": automatica.historial_con_estado(automatica.leer_historial(), leer_cola(), subidos)})
 
 
 @app.route("/api/editado/<vid>")
@@ -605,6 +691,7 @@ def main() -> None:
 
     threading.Thread(target=trabajador, daemon=True).start()
     threading.Thread(target=refrescar_listado, daemon=True).start()
+    threading.Thread(target=programador, daemon=True).start()
     if args.publico:
         abrir_tunel()
 

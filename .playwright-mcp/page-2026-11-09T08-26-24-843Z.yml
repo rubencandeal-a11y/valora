@@ -1,0 +1,28 @@
+- generic [active] [ref=f13e1]:
+  - generic [ref=f13e2]:
+    - generic [ref=f13e3]:
+      - progressbar [ref=f13e5]
+      - generic [ref=f13e13]:
+        - heading "Google no ha verificado esta aplicación" [level=1] [ref=f13e22]
+        - generic [ref=f13e32]:
+          - text: Te han dado acceso a una aplicación que aún se está probando. Solo debes continuar si conoces al
+          - button "desarrollador" [ref=f13e33] [cursor=pointer]
+          - text: que te ha invitado.
+        - generic [ref=f13e35]:
+          - button "Volver a un sitio seguro" [ref=f13e39]
+          - button "Continuar" [ref=f13e46]
+    - contentinfo [ref=f13e51]:
+      - combobox "‪Español (España)‬" [ref=f13e55] [cursor=pointer]:
+        - generic [aria-hidden]:
+          - generic: ‪Español (España)‬
+      - list [ref=f13e57]:
+        - listitem [ref=f13e58]:
+          - link "Ayuda" [ref=f13e59] [cursor=pointer]:
+            - /url: https://support.google.com/accounts?hl=es&p=account_iph
+        - listitem [ref=f13e60]:
+          - link "Privacidad" [ref=f13e61] [cursor=pointer]:
+            - /url: https://accounts.google.com/TOS?loc=ES&hl=es&privacy=true
+        - listitem [ref=f13e62]:
+          - link "Términos" [ref=f13e63] [cursor=pointer]:
+            - /url: https://accounts.google.com/TOS?loc=ES&hl=es
+  - generic [ref=f13e64]: Google no ha verificado esta aplicación

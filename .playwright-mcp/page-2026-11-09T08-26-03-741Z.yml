@@ -1,0 +1,29 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - progressbar [ref=e4]
+    - generic [ref=e10]:
+      - generic "Google" [ref=e13]
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - heading "Conectar un dispositivo" [level=1] [ref=e32]
+          - generic [ref=e33]: Introduce el código que se muestre en tu dispositivo
+        - generic [ref=e44]:
+          - textbox "Escribe el código" [active] [ref=e45]
+          - generic [aria-hidden]: Escribe el código
+        - button "Continuar" [ref=e53]
+    - contentinfo [ref=e57]:
+      - combobox "‪Español (España)‬" [ref=e61] [cursor=pointer]:
+        - generic [aria-hidden]:
+          - generic: ‪Español (España)‬
+      - list [ref=e63]:
+        - listitem [ref=e64]:
+          - link "Ayuda" [ref=e65] [cursor=pointer]:
+            - /url: https://support.google.com/accounts?hl=es&p=account_iph
+        - listitem [ref=e66]:
+          - link "Privacidad" [ref=e67] [cursor=pointer]:
+            - /url: https://accounts.google.com/TOS?loc=ES&hl=es&privacy=true
+        - listitem [ref=e68]:
+          - link "Términos" [ref=e69] [cursor=pointer]:
+            - /url: https://accounts.google.com/TOS?loc=ES&hl=es
+  - iframe [ref=e71]
+  - generic [ref=e72]: Conectar un dispositivo Introduce el código que se muestre en tu dispositivo
