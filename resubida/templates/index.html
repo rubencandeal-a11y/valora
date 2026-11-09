@@ -407,7 +407,7 @@ async function cargarHistorial() {
     t.append(cab);
     for (const v of dia.videos) {
       const tr = document.createElement("tr");
-      celda(tr, fechaCorta(v.fecha), "ancho"); celda(tr, v.titulo); celda(tr, v.playlists.join(", ") || "—");
+      celda(tr, fechaCorta(v.fecha), "ancho"); celda(tr, v.titulo).title = "Original: " + (v.titulo_original || v.titulo); celda(tr, v.playlists.join(", ") || "—");
       const res = document.createElement("span");
       res.className = v.estado === "hecho" ? "ok" : (v.estado === "error" ? "error" : "suave");
       res.textContent = ESTADO_TXT[v.estado] || v.estado;

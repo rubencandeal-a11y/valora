@@ -560,7 +560,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
     <Grid x:Name="PanelYT" Grid.Column="1" Background="#1F1B1B" Visibility="Collapsed" Panel.ZIndex="4">
       <DockPanel Margin="24,18,24,14">
         <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="250"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
           <StackPanel>
             <TextBlock Text="Resubir vídeos de YouTube" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
             <TextBlock x:Name="TxtYTResumen" Foreground="#8C929C" FontSize="12.5" Margin="0,2,0,0"/>

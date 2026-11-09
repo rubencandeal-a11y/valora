@@ -246,7 +246,9 @@ def historial_con_estado(historial: list[dict], cola: list[dict], subidos: dict)
             else:
                 estado = "quitado"
             cuenta[estado] = cuenta.get(estado, 0) + 1
+            titulo_subido = subidos.get(v["id"], {}).get("titulo") or item.get("titulo_nuevo") or ""
             videos.append(dict(v, estado=estado, nuevo=nuevo, error=item.get("error", ""),
+                               titulo_original=v["titulo"], titulo=titulo_subido or v["titulo"],
                                en_cola=item.get("estado", ""),
                                subido=subidos.get(v["id"], {}).get("fecha", "")))
         salida.append(dict(dia, videos=videos, cuenta=cuenta))
