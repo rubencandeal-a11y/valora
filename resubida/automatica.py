@@ -26,7 +26,7 @@ PLAN_INICIAL = {
     "dias": [0, 1, 2, 3, 4, 5, 6],      # 0 = lunes
     "privacidad": "public",
     "entrada_salida": True,
-    "titulo_modo": "igual",
+    "titulo_modo": "ia",
     "orden": "asc",                       # asc: más antiguos primero; desc: más recientes primero
     "desde": "",                          # AAAA-MM-DD, vacío = sin límite
     "hasta": "",
@@ -84,7 +84,9 @@ def validar(datos: dict, actual: dict) -> dict:
     if "entrada_salida" in datos:
         plan["entrada_salida"] = bool(datos["entrada_salida"])
     if "titulo_modo" in datos:
-        plan["titulo_modo"] = str(datos["titulo_modo"])
+        if datos["titulo_modo"] not in ("igual", "recuerdo", "ia"):
+            raise ValueError("titulo_modo")
+        plan["titulo_modo"] = datos["titulo_modo"]
     if "orden" in datos:
         if datos["orden"] not in ("asc", "desc"):
             raise ValueError("orden")

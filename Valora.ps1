@@ -421,6 +421,7 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
           <TextBlock x:Name="TxtEstado" Foreground="#8C929C" FontSize="12" TextWrapping="Wrap" Margin="10,10,8,0"/>
           <TextBlock x:Name="TxtVersion" Foreground="#5A606B" FontSize="11" Margin="10,4,8,0"/>
         </StackPanel>
+        <Grid>
         <DockPanel x:Name="LateralMedio" Margin="0,10,0,10">
           <Grid DockPanel.Dock="Top">
             <TextBlock Text="Conversaciones" Style="{StaticResource Seccion}"/>
@@ -439,6 +440,17 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
             <StackPanel x:Name="ListaConv"/>
           </ScrollViewer>
         </DockPanel>
+        <!-- En modo YouTube: lo que ha subido la subida automática cada día -->
+        <DockPanel x:Name="LateralYT" Margin="0,10,0,10" Visibility="Collapsed">
+          <Grid DockPanel.Dock="Top">
+            <TextBlock Text="Historial de subidas" Style="{StaticResource Seccion}"/>
+            <TextBlock x:Name="TxtYTLatTotal" Foreground="#5A606B" FontSize="11.5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,6"/>
+          </Grid>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,2,0">
+            <StackPanel x:Name="YTLatHist"/>
+          </ScrollViewer>
+        </DockPanel>
+        </Grid>
       </DockPanel>
     </Border>
 
@@ -833,7 +845,13 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
                       <ComboBoxItem Content="▲ Ascendente · más antiguos primero" Tag="asc"/><ComboBoxItem Content="▼ Descendente · más recientes primero" Tag="desc"/>
                     </ComboBox>
                   </StackPanel>
-                  <CheckBox x:Name="ChkYTAutoES" Grid.Row="3" Grid.ColumnSpan="3" Foreground="#ECE8E1" Content="Con entrada y salida" Margin="0,0,0,10"/>
+                  <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Título" Foreground="#8C929C" FontSize="12.5"/>
+                    <ComboBox x:Name="YTAutoTitulo">
+                      <ComboBoxItem Content="Con IA (nuevo, a partir del versículo)" Tag="ia"/><ComboBoxItem Content="Recuerdo · título original" Tag="recuerdo"/><ComboBoxItem Content="Igual que el original" Tag="igual"/>
+                    </ComboBox>
+                  </StackPanel>
+                  <CheckBox x:Name="ChkYTAutoES" Grid.Row="3" Grid.Column="2" Foreground="#ECE8E1" Content="Con entrada y salida" VerticalAlignment="Bottom" Margin="0,0,0,14"/>
                   <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,8">
                     <TextBlock Text="Desde (AAAA-MM-DD)" Foreground="#8C929C" FontSize="12.5"/>
                     <TextBox x:Name="YTAutoDesde" Background="#181B20" Foreground="#ECE8E1" CaretBrush="#ECE8E1" BorderBrush="#363C47" Padding="6,4"/>
@@ -1070,7 +1088,7 @@ foreach ($n in 'BtnNueva','TxtWs','BtnWs','BtnAbrirWs','ListaCarpetas','BtnCarpe
                'YTClientSecret','BtnYTGuardarCred','BtnYTLoginGoogle','ChipYTServidor','TxtYTServidorChip',
                'Lateral','LogoFondo','LogoLetra','LogoTexto',
                'BtnYTVerResubida','BtnYTAbrirCanal','YTTitulo','YTResubida','BtnYTResubidaCerrar','TxtYTResubida','YTResubidaLista','BarraYTResubida',
-               'BtnYTAuto','BtnYTAutoHistorial','RunYTAuto','YTAuto','BtnYTAutoTabConfig','BtnYTAutoTabHist','BtnYTAutoCerrar','YTAutoConfig','ChkYTAutoActiva','YTAutoPorDia','YTAutoHora','YTAutoDias','YTAutoPrivacidad','YTAutoOrden','ChkYTAutoES','YTAutoDesde','YTAutoHasta','YTAutoLista','YTAutoTipo','YTAutoTexto','YTAutoTope','TxtYTAutoResumen','TxtYTAutoSig','TxtYTAutoAviso','BtnYTAutoGuardar','BtnYTAutoHoy','YTAutoHist','YTAutoHistLista',
+               'BtnYTAuto','BtnYTAutoHistorial','LateralYT','TxtYTLatTotal','YTLatHist','RunYTAuto','YTAuto','BtnYTAutoTabConfig','BtnYTAutoTabHist','BtnYTAutoCerrar','YTAutoConfig','ChkYTAutoActiva','YTAutoPorDia','YTAutoHora','YTAutoDias','YTAutoPrivacidad','YTAutoOrden','YTAutoTitulo','ChkYTAutoES','YTAutoDesde','YTAutoHasta','YTAutoLista','YTAutoTipo','YTAutoTexto','YTAutoTope','TxtYTAutoResumen','TxtYTAutoSig','TxtYTAutoAviso','BtnYTAutoGuardar','BtnYTAutoHoy','YTAutoHist','YTAutoHistLista',
                'BtnEstilo','IcoEstilo','PanelEstilo','AtajosEstilo','TxtEstilo','BtnEstiloBorrar','BtnEstiloCancelar','BtnEstiloGuardar') {
     $ui[$n] = $win.FindName($n)
 }
@@ -3512,6 +3530,7 @@ function Get-VideosYT {
         $ui.TxtYTResumen.Text = "$($script:ytVideos.Count) vídeos · $resubidos resubidos · listado del $($res.generado)"
         Update-ListaYT
         Get-AutoYT
+        Update-LateralYT
     }
 }
 
@@ -3628,7 +3647,7 @@ function Get-PlanVentanaYT {
     return @{
         activa = [bool]$ui.ChkYTAutoActiva.IsChecked; por_dia = [math]::Max(1, $n); hora = $ui.YTAutoHora.Text.Trim()
         dias = $dias; privacidad = Get-ValorCombo $ui.YTAutoPrivacidad; orden = Get-ValorCombo $ui.YTAutoOrden
-        entrada_salida = [bool]$ui.ChkYTAutoES.IsChecked; desde = $ui.YTAutoDesde.Text.Trim(); hasta = $ui.YTAutoHasta.Text.Trim()
+        entrada_salida = [bool]$ui.ChkYTAutoES.IsChecked; titulo_modo = Get-ValorCombo $ui.YTAutoTitulo; desde = $ui.YTAutoDesde.Text.Trim(); hasta = $ui.YTAutoHasta.Text.Trim()
         listas = @(if ($lista) { $lista }); tipo = Get-ValorCombo $ui.YTAutoTipo; texto = $ui.YTAutoTexto.Text.Trim(); tope = [math]::Max(0, $tope)
     }
 }
@@ -3666,6 +3685,7 @@ function Show-VentanaAutoYT($d) {
         }
         Set-ComboPorTag $ui.YTAutoPrivacidad $p.privacidad
         Set-ComboPorTag $ui.YTAutoOrden $p.orden
+        Set-ComboPorTag $ui.YTAutoTitulo $p.titulo_modo
         $ui.ChkYTAutoES.IsChecked = [bool]$p.entrada_salida
         $ui.YTAutoDesde.Text = [string]$p.desde
         $ui.YTAutoHasta.Text = [string]$p.hasta
@@ -3773,6 +3793,56 @@ function Get-HistorialAutoYT {
             }
             $exp.Content = $lista
             [void]$ui.YTAutoHistLista.Children.Add($exp)
+        }
+    }
+}
+
+# Historial de la subida automática en la barra lateral: un renglón por día, el más reciente arriba.
+$script:ytLatPidiendo = $null
+function Update-LateralYT {
+    if (-not (Get-TokenYT)) { return }
+    if ($script:ytLatPidiendo -and ((Get-Date) - $script:ytLatPidiendo).TotalSeconds -lt 30) { return }
+    $script:ytLatPidiendo = Get-Date
+    Invoke-YT 'GET' '/api/auto/historial' $null {
+        param($res, $err)
+        $script:ytLatPidiendo = $null
+        if ($err -or -not $res) { return }
+        $ui.YTLatHist.Children.Clear()
+        $dias = @($res.dias)
+        $subidos = 0
+        foreach ($d in $dias) { $subidos += [int]$d.cuenta.hecho }
+        $ui.TxtYTLatTotal.Text = if ($dias.Count) { "$subidos subidos" } else { '' }
+        if (-not $dias.Count) {
+            [void]$ui.YTLatHist.Children.Add((New-TextoYT 'Todavía no hay días. Se llena con la subida automática.' '#6A707B' 12))
+            return
+        }
+        $es = [Globalization.CultureInfo]::GetCultureInfo('es-ES')
+        foreach ($d in $dias) {
+            $total = @($d.videos).Count
+            $c = $d.cuenta
+            $color = if ($total -and $c.hecho -eq $total) { '#81C995' } elseif ($c.error) { '#F28B82' } else { '#F2C46D' }
+            $marca = if ($total -and $c.hecho -eq $total) { '✓' } elseif ($c.error) { '✗' } else { '⏳' }
+            $fecha = ([datetime]::ParseExact($d.dia, 'yyyy-MM-dd', $null)).ToString('ddd dd/MM', $es)
+            $b = New-Object System.Windows.Controls.Button
+            $b.Style = $win.FindResource('Plano')
+            $b.HorizontalContentAlignment = 'Stretch'
+            $b.Padding = '10,7'
+            $b.Margin = '0,0,0,2'
+            $b.ToolTip = 'Ver los vídeos de este día'
+            $sp = New-Object System.Windows.Controls.StackPanel
+            $l1 = New-Object System.Windows.Controls.TextBlock
+            $r1 = New-Object System.Windows.Documents.Run ("$fecha  "); $r1.Foreground = Brush '#ECE8E1'
+            $r2 = New-Object System.Windows.Documents.Run ("$marca $($c.hecho) de $total"); $r2.Foreground = Brush $color
+            $l1.Inlines.Add($r1); $l1.Inlines.Add($r2)
+            [void]$sp.Children.Add($l1)
+            $vids = @($d.videos)
+            if ($vids.Count) {
+                $primero = Format-FechaYT $vids[0].fecha; $ultimo = Format-FechaYT $vids[-1].fecha
+                [void]$sp.Children.Add((New-TextoYT $(if ($primero -eq $ultimo) { $primero } else { "$primero → $ultimo" }) '#8C929C' 11.5))
+            }
+            $b.Content = $sp
+            $b.Add_Click({ Open-AutoYT; Show-PestanaAutoYT 'hist' })
+            [void]$ui.YTLatHist.Children.Add($b)
         }
     }
 }
@@ -4210,6 +4280,8 @@ function Set-Modo([string]$modo) {
     $ui.PanelYT.Visibility = if ($yt) { 'Visible' } else { 'Collapsed' }
     # En modo YouTube, lo del lateral que es de Valora (conversaciones, carpetas, fichas, agy) no pinta nada.
     foreach ($n in 'LateralArriba', 'LateralMedio', 'LateralAbajo') { $ui[$n].Visibility = if ($yt) { 'Collapsed' } else { 'Visible' } }
+    $ui.LateralYT.Visibility = if ($yt) { 'Visible' } else { 'Collapsed' }
+    if ($yt) { Update-LateralYT }
     # Cada modo con su cara: en YouTube el logo, el título y el color pasan a rojo.
     $ui.LogoTexto.Text = if ($yt) { 'YouTube' } else { 'Valora' }
     $ui.BtnEstilo.Visibility = if ($yt) { 'Collapsed' } else { 'Visible' }
@@ -4367,7 +4439,7 @@ $ui.BtnYTAutoTabHist.Add_Click({ Show-PestanaAutoYT 'hist' })
 $ui.BtnYTAutoGuardar.Add_Click({ Save-AutoYT })
 $ui.BtnYTAutoHoy.Add_Click({ Send-AutoHoyYT })
 foreach ($c in 'YTAutoPorDia', 'YTAutoHora', 'YTAutoDesde', 'YTAutoHasta', 'YTAutoTexto', 'YTAutoTope') { $ui[$c].Add_TextChanged({ Request-SimularAutoYT }) }
-foreach ($c in 'YTAutoPrivacidad', 'YTAutoOrden', 'YTAutoLista', 'YTAutoTipo') { $ui[$c].Add_SelectionChanged({ Request-SimularAutoYT }) }
+foreach ($c in 'YTAutoPrivacidad', 'YTAutoOrden', 'YTAutoTitulo', 'YTAutoLista', 'YTAutoTipo') { $ui[$c].Add_SelectionChanged({ Request-SimularAutoYT }) }
 foreach ($c in 'ChkYTAutoActiva', 'ChkYTAutoES') { $ui[$c].Add_Click({ Request-SimularAutoYT }) }
 
 $VersionFile = Join-Path $ConfigDir 'version.json'

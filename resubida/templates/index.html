@@ -40,7 +40,8 @@
       <div class="ancho2"><span class="etq">Días</span><div id="a-dias" class="dias"></div></div>
       <label>Visibilidad <select id="a-privacidad"><option value="private">Privados</option><option value="unlisted">Ocultos</option><option value="public">Públicos</option></select></label>
       <label>Orden <select id="a-orden"><option value="asc">▲ Ascendente · más antiguos primero</option><option value="desc">▼ Descendente · más recientes primero</option></select></label>
-      <label class="fila-chk ancho2"><input type="checkbox" id="a-es"> Con entrada y salida</label>
+      <label>Título <select id="a-titulo"><option value="ia">Con IA (nuevo, a partir del versículo)</option><option value="recuerdo">Recuerdo · título original</option><option value="igual">Igual que el original</option></select></label>
+      <label class="fila-chk"><input type="checkbox" id="a-es"> Con entrada y salida</label>
       <h3 class="ancho2">Condiciones</h3>
       <label>Desde <input type="date" id="a-desde"></label>
       <label>Hasta <input type="date" id="a-hasta"></label>
@@ -324,7 +325,7 @@ function planDeLaVentana() {
   return {
     activa: $("a-activa").checked, por_dia: +$("a-por-dia").value || 1, hora: $("a-hora").value || "03:00",
     dias: [...document.querySelectorAll("#a-dias input")].filter(c => c.checked).map(c => +c.value),
-    privacidad: $("a-privacidad").value, orden: $("a-orden").value, entrada_salida: $("a-es").checked,
+    privacidad: $("a-privacidad").value, orden: $("a-orden").value, entrada_salida: $("a-es").checked, titulo_modo: $("a-titulo").value,
     desde: $("a-desde").value, hasta: $("a-hasta").value,
     listas: [...$("a-listas").selectedOptions].map(o => o.value),
     tipo: $("a-tipo").value, texto: $("a-texto").value, tope: +$("a-tope").value || 0,
@@ -356,7 +357,7 @@ function rellenarVentana(d) {
     const l = document.createElement("label"); const c = document.createElement("input");
     c.type = "checkbox"; c.value = i; c.checked = p.dias.includes(i); l.append(c, t); return l;
   }));
-  $("a-privacidad").value = p.privacidad; $("a-orden").value = p.orden; $("a-es").checked = p.entrada_salida;
+  $("a-privacidad").value = p.privacidad; $("a-orden").value = p.orden; $("a-es").checked = p.entrada_salida; $("a-titulo").value = p.titulo_modo;
   $("a-desde").value = p.desde; $("a-hasta").value = p.hasta; $("a-tipo").value = p.tipo;
   $("a-texto").value = p.texto; $("a-tope").value = p.tope || "";
   $("a-listas").replaceChildren(new Option("Sin lista", "-"), ...d.listas.map(l => new Option(l, l)));
