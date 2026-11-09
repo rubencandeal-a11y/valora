@@ -712,9 +712,9 @@ $script:filaTrabajo = $null       # su burbuja en pantalla, para volver a ponerl
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <ComboBox x:Name="YTPrivacidad" MinWidth="110" VerticalContentAlignment="Center" ToolTip="Cómo quedan los vídeos nuevos">
-              <ComboBoxItem Content="Privados" Tag="private" IsSelected="True"/>
+              <ComboBoxItem Content="Privados" Tag="private"/>
               <ComboBoxItem Content="Ocultos" Tag="unlisted"/>
-              <ComboBoxItem Content="Públicos" Tag="public"/>
+              <ComboBoxItem Content="Públicos" Tag="public" IsSelected="True"/>
             </ComboBox>
             <ComboBox x:Name="YTTitulo" MinWidth="150" Margin="8,0,0,0" VerticalContentAlignment="Center"
                       ToolTip="Para que el vídeo nuevo no se titule igual que el original">

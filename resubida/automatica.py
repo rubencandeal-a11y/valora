@@ -24,7 +24,7 @@ PLAN_INICIAL = {
     "por_dia": 10,
     "hora": "03:00",
     "dias": [0, 1, 2, 3, 4, 5, 6],      # 0 = lunes
-    "privacidad": "private",
+    "privacidad": "public",
     "entrada_salida": True,
     "titulo_modo": "igual",
     "orden": "asc",                       # asc: más antiguos primero; desc: más recientes primero
