@@ -645,7 +645,9 @@ def refrescar_listado() -> None:
     Las playlists, una vez al día y solo con la cola parada: son muchas peticiones y, junto a
     una descarga, YouTube puede bloquear por exceso.
     """
-    ultima_playlists = 0.0
+    # Si las listas se leyeron hace menos de un día (por ejemplo, antes de reiniciar la web), no se repite.
+    ruta = BASE / "playlists.json"
+    ultima_playlists = ruta.stat().st_mtime if ruta.exists() else 0.0
     while True:
         if not estado["actualizando"]:
             estado["actualizando"] = True
